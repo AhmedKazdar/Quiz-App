@@ -1,0 +1,102 @@
+/* Autofill Fix */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0px 1000px white inset !important;
+  box-shadow: 0 0 0px 1000px white inset !important;
+  -webkit-text-fill-color: #000 !important;
+  color: #000 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Base Body Styling */
+body {
+  margin: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: #f7f9fc;
+  color: #333;
+  height: 100vh;
+}
+
+/* Make the form fill the page and center it */
+.login-form-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Form Box */
+.form-box {
+  background-color: #ffffff;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+  transition: all 0.3s ease;
+}
+
+/* Title */
+h2 {
+  font-size: 28px;
+  font-weight: 600;
+  text-align: center;
+  color: #222;
+  margin-bottom: 30px;
+}
+
+/* Input Styling */
+.MDBInput {
+  margin-bottom: 20px;
+  border-radius: 8px;
+}
+
+/* Button */
+.MDBBtn {
+  width: 100%;
+  background-color: #0066ff;
+  font-size: 16px;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: background-color 0.3s ease;
+  margin-top: 10px;
+}
+
+.MDBBtn:hover {
+  background-color: #004fcc;
+}
+
+/* Validation */
+.MDBValidationItem {
+  margin-bottom: 20px;
+}
+
+.MDBValidationItem .invalid-feedback {
+  font-size: 0.85rem;
+  color: #d32f2f;
+}
+
+/* Redirect Text (e.g., Already have an account?) */
+.register-container {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 14px;
+  color: #555;
+}
+
+.login-btn {
+  background: none;
+  border: none;
+  color: #0066ff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  font-size: 14px;
+}
+
+.login-btn:hover {
+  color: #004fcc;
+}

@@ -1,0 +1,91 @@
+/* LoginForm.css */
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0px 1000px white inset !important;
+  box-shadow: 0 0 0px 1000px white inset !important;
+  -webkit-text-fill-color: #000 !important;
+  color: #000 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: #f7f9fc;
+}
+
+.login-form-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 90vh;
+}
+
+.form-box {
+  background-color: #ffffff;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+  transition: all 0.3s ease;
+}
+
+.login-title {
+  font-size: 28px;
+  font-weight: 600;
+  text-align: center;
+  color: #222;
+  margin-bottom: 30px;
+}
+
+.MDBInput {
+  margin-bottom: 20px;
+}
+
+.login-btn {
+  width: 100%;
+  background-color: #0066ff;
+  font-size: 16px;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: background-color 0.3s ease;
+  margin-top: 10px;
+  color: white;
+}
+
+.login-btn:hover {
+  background-color: #004fcc;
+}
+
+.register-container {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 14px;
+  color: #555;
+}
+
+.register-btn {
+  background: none;
+  border: none;
+  color: #0066ff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.3s ease;
+  font-size: 14px;
+}
+
+.register-btn:hover {
+  color: #004fcc;
+}
+
+.error-text {
+  color: #d32f2f;
+  font-size: 13px;
+  margin-bottom: 10px;
+  text-align: center;
+}
