@@ -1,101 +1,163 @@
-/* Make the full page a flex container */
 .page-wrapper {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  background-color: #f9f9f9;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
-/* Main content should grow and push the footer down */
 .home-container {
   flex: 1;
-  padding: 20px;
+  padding: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
   text-align: center;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.08);
+  margin-top: 2rem;
 }
 
-/* Existing styles (keep these as is or customize) */
 .welcome-title {
-  font-size: 24px;
-  margin-bottom: 50px;
+  font-size: 2rem;
+  color: #333;
+  margin-bottom: 1.5rem;
 }
 
-/* Style for mode selection buttons */
 .button-group {
-  margin-bottom: 30px; /* Increased space between buttons */
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  flex-direction: row;
+  gap: 1rem;
+  margin-top: 1.5rem;
 }
 
-/* Style for quiz mode buttons (practice, online) */
 .nav-btn {
-  margin: 10px;
-  padding: 12px 25px; /* Larger padding for better click area */
-  font-size: 16px;
-  cursor: pointer;
-  background-color: #4caf50;
+  background-color: #007bff;
   color: white;
   border: none;
-  border-radius: 5px;
-  transition: background-color 0.3s ease;
-  width: 200px; /* Same width for uniformity */
+  padding: 0.8rem 1.2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s;
 }
 
-/* Hover effect for buttons */
 .nav-btn:hover {
-  background-color: #45a049;
+  background-color: #0056b3;
 }
 
-/* Active class for selected mode button */
-.nav-btn.active {
-  background-color: #008c29; /* Darker green for active button */
-  color: white;
-}
-
-/* Countdown timer styling */
-.countdown {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #ff5733; /* Red color */
-  margin-top: 20px;
-  margin-bottom: 30px;
-}
-
-/* Logout button */
 .logout-btn {
-  margin-top: 20px;
-  padding: 10px 20px;
-  font-size: 16px;
-  cursor: pointer;
-  background-color: #f44336;
+  margin-top: 2rem;
+  background-color: #dc3545;
   color: white;
   border: none;
-  border-radius: 5px;
-  transition: background-color 0.3s ease;
-  width: 200px; /* Same width for uniformity */
+  padding: 0.8rem 1.2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s;
 }
 
-/* Hover effect for logout button */
 .logout-btn:hover {
-  background-color: #e53935;
+  background-color: #c82333;
 }
 
-/* Footer should stay at the bottom */
+.countdown {
+  margin-top: 1.5rem;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #444;
+}
+
+/* 👥 Online Users Section */
+.online-users {
+  margin: 20px auto;
+  max-width: 400px;
+  padding: 10px 20px;
+  background-color: #e9f7ef;
+  border-radius: 10px;
+  border: 1px solid #c8e6c9;
+  text-align: left;
+}
+
+.online-users h3 {
+  margin-bottom: 10px;
+  font-size: 1.2rem;
+  color: #2e7d32;
+}
+
+.online-users ul {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.online-users li {
+  padding: 5px 0;
+  font-size: 1rem;
+  color: #333;
+}
+
+/* 🎨 Footer with Random Image */
 .footer {
-  background-color: #f8f8f8;
-  padding: 16px;
-  text-align: center;
-  border-top: 1px solid #ccc;
+  height: 250px; /* Strictly limit the footer height */
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 5px;
 }
 
-/* Media query for smaller screens */
+/* ✅ Responsive Design */
 @media (max-width: 768px) {
+  .home-container {
+    padding: 1.2rem;
+    margin-top: 1rem;
+    width: 90%;
+  }
+
+  .welcome-title {
+    font-size: 1.5rem;
+  }
+
+  .button-group {
+    flex-direction: row;
+    gap: 0.8rem;
+  }
+
   .nav-btn,
   .logout-btn {
-    width: 100%; /* Buttons take up full width on small screens */
-    padding: 12px 0;
+    width: 100%;
+    padding: 0.9rem;
+    font-size: 1rem;
+  }
+
+  .online-users {
+    max-width: 100%;
+    font-size: 0.95rem;
+    padding: 10px 15px;
+  }
+
+  .online-users h3 {
+    font-size: 1.1rem;
+  }
+
+  .footer {
+    margin-top: 1.1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .welcome-title {
+    font-size: 1.3rem;
   }
 
   .countdown {
-    font-size: 1.2rem; /* Slightly smaller countdown on smaller screens */
+    font-size: 1rem;
+  }
+
+  .nav-btn,
+  .logout-btn {
+    font-size: 0.95rem;
   }
 }

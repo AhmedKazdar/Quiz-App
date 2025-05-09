@@ -24,11 +24,16 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
+import { OnlineGateway } from 'src/gateways/online.gateway';
 
 @ApiTags('users')
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly onlineGateway: OnlineGateway,
+  ) {}
 
   // Admin creates a new user
   @Post('create')
@@ -93,6 +98,19 @@ export class UserController {
     }
   }
 
+  // Get list of currently online users
+  @Get('online')
+  @UseGuards(JwtAuthGuard) // Optional: secure this route
+  @ApiOperation({ summary: 'Fetch online users' })
+  @ApiOkResponse({ description: 'Online users retrieved successfully.' })
+  async getOnlineUsers() {
+    try {
+      const onlineUsers = this.onlineGateway.getOnlineUsers();
+      return { message: 'Online users retrieved successfully', onlineUsers };
+    } catch (error) {
+      return { message: error.message };
+    }
+  }
   // Get user by ID
 
   @Get(':id')

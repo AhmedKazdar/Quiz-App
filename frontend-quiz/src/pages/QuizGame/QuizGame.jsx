@@ -49,11 +49,14 @@ const QuizGame = () => {
           )
         );
 
-        const shuffledQuestions = filteredQuestions.sort(
-          () => Math.random() - 0.5
-        );
+        let finalQuestions;
+        if (quizMode === "practice") {
+          finalQuestions = filteredQuestions.sort(() => Math.random() - 0.5);
+        } else {
+          finalQuestions = filteredQuestions; // keep order for online
+        }
+        setQuestions(finalQuestions);
 
-        setQuestions(shuffledQuestions);
         setResponses(allResponses);
       } catch (error) {
         console.error("Error fetching quiz data:", error);

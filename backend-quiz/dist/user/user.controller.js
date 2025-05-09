@@ -22,10 +22,13 @@ const jwt_auth_guard_1 = require("./jwt-auth.guard");
 const login_dto_1 = require("./dto/login.dto");
 const common_2 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
+const online_gateway_1 = require("../gateways/online.gateway");
 let UserController = class UserController {
     userService;
-    constructor(userService) {
+    onlineGateway;
+    constructor(userService, onlineGateway) {
         this.userService = userService;
+        this.onlineGateway = onlineGateway;
     }
     async createAdminUser(createUserDto) {
         try {
@@ -61,6 +64,15 @@ let UserController = class UserController {
         try {
             const users = await this.userService.getAllUsers();
             return { message: 'Users extracted successfully', users };
+        }
+        catch (error) {
+            return { message: error.message };
+        }
+    }
+    async getOnlineUsers() {
+        try {
+            const onlineUsers = this.onlineGateway.getOnlineUsers();
+            return { message: 'Online users retrieved successfully', onlineUsers };
         }
         catch (error) {
             return { message: error.message };
@@ -143,6 +155,15 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], UserController.prototype, "getAllUsers", null);
 __decorate([
+    (0, common_1.Get)('online'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, swagger_1.ApiOperation)({ summary: 'Fetch online users' }),
+    (0, swagger_1.ApiOkResponse)({ description: 'Online users retrieved successfully.' }),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], UserController.prototype, "getOnlineUsers", null);
+__decorate([
     (0, common_1.Get)(':id'),
     (0, swagger_1.ApiOperation)({ summary: 'Fetch a user by id' }),
     (0, swagger_1.ApiOkResponse)({ description: 'User found' }),
@@ -174,6 +195,7 @@ __decorate([
 exports.UserController = UserController = __decorate([
     (0, swagger_1.ApiTags)('users'),
     (0, common_1.Controller)('users'),
-    __metadata("design:paramtypes", [user_service_1.UserService])
+    __metadata("design:paramtypes", [user_service_1.UserService,
+        online_gateway_1.OnlineGateway])
 ], UserController);
 //# sourceMappingURL=user.controller.js.map

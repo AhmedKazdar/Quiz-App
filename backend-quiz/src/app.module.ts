@@ -6,6 +6,8 @@ import { QuestionModule } from './question/question.module';
 import { ResponseModule } from './response/response.module';
 import { ResultModule } from './result/result.module';
 import { ScoreModule } from './score/score.module';
+import { OnlineGateway } from './gateways/online.gateway';
+import { OnlineModule } from './gateways/online.module';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { ScoreModule } from './score/score.module';
     ResponseModule,
     ResultModule,
     ScoreModule,
+    OnlineModule,
   ],
+  providers: [OnlineGateway],
 })
 export class AppModule {}

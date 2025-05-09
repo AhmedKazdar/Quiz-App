@@ -15,6 +15,8 @@ const question_module_1 = require("./question/question.module");
 const response_module_1 = require("./response/response.module");
 const result_module_1 = require("./result/result.module");
 const score_module_1 = require("./score/score.module");
+const online_gateway_1 = require("./gateways/online.gateway");
+const online_module_1 = require("./gateways/online.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -28,7 +30,9 @@ exports.AppModule = AppModule = __decorate([
             response_module_1.ResponseModule,
             result_module_1.ResultModule,
             score_module_1.ScoreModule,
+            online_module_1.OnlineModule,
         ],
+        providers: [online_gateway_1.OnlineGateway],
     })
 ], AppModule);
 //# sourceMappingURL=app.module.js.map

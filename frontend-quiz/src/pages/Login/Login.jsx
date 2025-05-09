@@ -10,7 +10,8 @@ import {
 } from "mdb-react-ui-kit";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import "./Login.css"; // ✅ Import your CSS here
+import "./Login.css";
+import socketService from "../../services/socketService";
 
 const LoginForm = () => {
   const [email, setEmail] = useState("");
@@ -37,7 +38,8 @@ const LoginForm = () => {
       localStorage.setItem("username", username);
       localStorage.setItem("isAuthenticated", "true");
 
-      // Log them immediately after setting
+      socketService.connect(); // ✅ Now the token is available
+
       console.log(localStorage.getItem("token"));
       console.log(localStorage.getItem("userId"));
       console.log(localStorage.getItem("role"));
@@ -47,10 +49,9 @@ const LoginForm = () => {
       setLoading(false);
       toast.success("Login successful!");
 
-      // Use a setTimeout to allow for state update before redirect
       setTimeout(() => {
         navigate("/home");
-      }, 200); // Slight delay to allow the localStorage state to be processed
+      }, 200);
     } catch (err) {
       setLoading(false);
       setError("Invalid email or password");

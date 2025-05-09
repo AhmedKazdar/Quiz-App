@@ -13,6 +13,7 @@ const mongoose_1 = require("@nestjs/mongoose");
 const user_service_1 = require("./user.service");
 const user_controller_1 = require("./user.controller");
 const user_schema_1 = require("./user.schema");
+const online_module_1 = require("../gateways/online.module");
 let UserModule = class UserModule {
 };
 exports.UserModule = UserModule;
@@ -24,6 +25,7 @@ exports.UserModule = UserModule = __decorate([
                 secret: '123456',
                 signOptions: { expiresIn: '10d' },
             }),
+            online_module_1.OnlineModule,
         ],
         providers: [user_service_1.UserService],
         controllers: [user_controller_1.UserController],

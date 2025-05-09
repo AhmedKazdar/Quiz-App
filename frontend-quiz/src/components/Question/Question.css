@@ -198,45 +198,68 @@ input:-webkit-autofill:active {
   transform: scale(1.05);
 }
 
-/* Responsive */
+/* Responsive Improvements */
 @media (max-width: 768px) {
-  .questions-table th,
-  .questions-table td {
-    padding: 0.8rem;
-    font-size: 0.85rem; /* Smaller font size for better readability on mobile */
-  }
-
-  .form-container {
-    padding: 1.5rem;
-    width: 90%; /* Adjust width to fit smaller screens */
-  }
-
-  .title {
-    font-size: 2rem; /* Adjust title size */
-  }
-
-  .button-container {
-    flex-direction: column; /* Stack buttons vertically */
-    gap: 1rem;
-  }
-
-  .btn {
-    width: 100%; /* Make buttons full width */
-  }
-
-  /* Ensure table is scrollable on small screens */
   .questions-table {
     display: block;
     overflow-x: auto;
     white-space: nowrap;
+    border-spacing: 0; /* Optional: tighter table layout */
   }
 
-  /* Make the form inputs a bit more compact */
+  .questions-table th,
+  .questions-table td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.9rem;
+    text-align: left;
+  }
+
+  .form-container {
+    padding: 1.25rem;
+    width: 95%;
+    margin: 0 auto;
+    box-sizing: border-box;
+  }
+
+  .title {
+    font-size: 1.75rem;
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+
+  .button-container {
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: stretch;
+  }
+
+  .btn {
+    width: 100%;
+    font-size: 1rem;
+    padding: 0.75rem;
+  }
+
   .input-field {
-    padding: 0.6rem;
+    padding: 0.5rem;
+    font-size: 0.95rem;
+    width: 100%;
   }
 
   .pagination {
     flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  /* Optional enhancement: spacing between form elements */
+  .form-container .form-group {
+    margin-bottom: 1rem;
+  }
+
+  /* Optional: Reduce image/icon sizes if present */
+  .icon,
+  img {
+    max-width: 100%;
+    height: auto;
   }
 }

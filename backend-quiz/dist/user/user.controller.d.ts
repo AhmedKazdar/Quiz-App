@@ -1,9 +1,11 @@
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
+import { OnlineGateway } from 'src/gateways/online.gateway';
 export declare class UserController {
     private readonly userService;
-    constructor(userService: UserService);
+    private readonly onlineGateway;
+    constructor(userService: UserService, onlineGateway: OnlineGateway);
     createAdminUser(createUserDto: CreateUserDto): Promise<{
         message: string;
         user: import("./user.schema").UserDocument;
@@ -28,6 +30,13 @@ export declare class UserController {
     } | {
         message: any;
         users?: undefined;
+    }>;
+    getOnlineUsers(): Promise<{
+        message: string;
+        onlineUsers: string[];
+    } | {
+        message: any;
+        onlineUsers?: undefined;
     }>;
     getUserById(id: string): Promise<{
         message: string;

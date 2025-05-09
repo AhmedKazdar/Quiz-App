@@ -4,6 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { UserService } from './user.service';
 import { UserController } from './user.controller';
 import { User, UserSchema } from './user.schema';
+import { OnlineModule } from 'src/gateways/online.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { User, UserSchema } from './user.schema';
       secret: '123456',
       signOptions: { expiresIn: '10d' },
     }),
+    OnlineModule,
   ],
   providers: [UserService],
   controllers: [UserController],
