@@ -14,6 +14,7 @@ import { UserService } from '../user/user.service';
 import { QuestionService } from '../question/question.service';
 import { CreateResponseDto } from './dto/create-response.dto';
 import { UpdateResponseDto } from './dto/update-response.dto';
+import { SubmitAnswerDto } from './dto/submit-answer.dto';
 import {
   ApiBadRequestResponse,
   ApiCreatedResponse,
@@ -87,91 +88,93 @@ export class ResponseController {
   @ApiCreatedResponse({ description: 'Responses submitted successfully' })
   @ApiBadRequestResponse({ description: 'Invalid data provided' })
   @ApiNotFoundResponse({ description: 'User or Question not found' })
-  async submitResponses(
-    @Body()
-    responses: {
-      userId: string;
-      questionId: string;
-      isCorrect: boolean;
-      selectedAnswerText: string;
-    }[], // Array of response objects
-  ) {
-    const results: Response[] = []; // Array to store the successfully created responses
-    let totalScore = 0; // Variable to accumulate the total score
+  async submitResponses(@Body() responses: SubmitAnswerDto[]) {
+    const results: Response[] = [];
+    let totalScore = 0;
 
-    // Loop through each response submitted by the user
     for (const responseData of responses) {
       const { userId, questionId, isCorrect, selectedAnswerText } =
         responseData;
 
-      console.log('Received responseData:', responseData); // Log received data for debugging
-
-      // Ensure all necessary fields are valid
       if (
         !userId ||
         !questionId ||
         typeof isCorrect !== 'boolean' ||
         !selectedAnswerText
       ) {
-        console.log('Invalid response data, skipping this entry.');
-        continue; // Skip invalid responses
+        console.log('Invalid response data:', responseData);
+        continue;
       }
 
       try {
-        // Ensure the user exists using UserService
+        // Log the user and question being fetched
+        console.log('Fetching user with ID:', userId);
         const user = await this.userService.findById(userId);
         if (!user) {
+          console.log('User not found for ID:', userId);
           throw new NotFoundException(`User ${userId} not found`);
         }
 
-        // Ensure the question exists using QuestionService
+        console.log('Fetching question with ID:', questionId);
         const question = await this.questionService.findById(questionId);
         if (!question) {
+          console.log('Question not found for ID:', questionId);
           throw new NotFoundException(`Question ${questionId} not found`);
         }
 
-        // Check if a response already exists for this user and question
         const existingResponse =
-          await this.responseService.findByQuestionId(questionId);
-        if (existingResponse.length > 0) {
+          await this.responseService.findByUserAndQuestion(userId, questionId);
+        console.log('Checking for existing response...');
+        if (existingResponse) {
           console.log(
-            'Response already exists for this user and question, skipping.',
+            'Response already exists for user:',
+            userId,
+            'and question:',
+            questionId,
           );
-          continue; // Skip this response if it already exists
+          continue;
         }
 
-        // Create and save the new response using the ResponseService
+        // Create a new response
+        // Assuming Response schema's text is now a string
         const newResponse = await this.responseService.create({
-          userId, // already string
-          questionId, // already string
+          userId: new Types.ObjectId(userId), // Make sure it's an ObjectId
+          questionId: new Types.ObjectId(questionId),
           isCorrect,
           text: selectedAnswerText,
         });
 
-        console.log('Response created:', newResponse); // Log the created response
+        console.log('New Response Saved:', newResponse); // Log to verify
+
         results.push(newResponse);
 
-        // Calculate the score: add 1 for each correct answer
+        // Convert ObjectId to string before pushing it to results
+        const newResponseFormatted = {
+          ...newResponse,
+          text: newResponse.text.toString(), // Convert ObjectId to string
+        };
+
+        results.push(newResponseFormatted);
+
         if (isCorrect) {
-          totalScore += 1; // Increment score for each correct answer
+          totalScore += 1;
         }
       } catch (error) {
-        // Handle any errors during response creation for this entry
-        console.error('Error creating response:', error);
+        console.error('Error creating response:', error.message);
         results.push({
           userId: new Types.ObjectId(userId),
           questionId: new Types.ObjectId(questionId),
           isCorrect,
-          text: 'Error: ' + error.message,
+          text: `Error: ${error.message}`,
         });
       }
     }
 
-    // Return the results and the total score
+    console.log('Final Score:', totalScore);
     return {
       message: 'Responses submitted successfully',
       responses: results,
-      score: totalScore, // Return the total score based on correct answers
+      score: totalScore,
     };
   }
 

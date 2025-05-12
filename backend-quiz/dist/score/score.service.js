@@ -42,6 +42,8 @@ let ScoreService = class ScoreService {
                 throw new common_1.NotFoundException('User not found');
             }
             console.log('Fetching responses for user:', objectId);
+            const allResponses = await this.responseModel.find().exec();
+            console.log('All Responses in the DB:', allResponses);
             const responses = await this.responseModel
                 .find({ userId: objectId })
                 .exec();

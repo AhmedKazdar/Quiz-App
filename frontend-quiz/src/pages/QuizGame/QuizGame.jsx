@@ -146,12 +146,19 @@ const QuizGame = () => {
     setShowFinalScore(true);
     const userId = localStorage.getItem("userId");
 
+    // Check if the user is logged in
     if (!userId) {
       setError("User not found. Please log in again.");
       return;
     }
 
+    // Log userId for debugging
+    console.log("Fetched userId from localStorage:", userId);
+
     // Ensure that selectedAnswers has the right structure
+    console.log("Selected Answers:", selectedAnswers);
+
+    // Format answers for submission
     const formattedAnswers = selectedAnswers.map((answer) => ({
       userId,
       questionId: answer.questionId,
@@ -160,7 +167,7 @@ const QuizGame = () => {
     }));
 
     try {
-      // Submit the responses
+      // Submit the responses to the backend
       const response = await axios.post(
         "http://localhost:3001/response/submit",
         formattedAnswers
@@ -168,19 +175,31 @@ const QuizGame = () => {
 
       console.log("Responses submitted successfully:", response.data);
 
+      // Check if responses were successfully saved
+      if (response.data?.message !== "Responses submitted successfully") {
+        throw new Error("Failed to submit responses. Please try again.");
+      }
+
       // Now calculate the score after the responses are saved
       const scoreResponse = await axios.post(
         `http://localhost:3001/score/calculate/${userId}`
       );
       console.log("Score saved successfully:", scoreResponse.data);
 
+      // Check if the score was returned successfully
       if (scoreResponse.data?.score !== undefined) {
         setFinalScore(scoreResponse.data.score);
       } else {
-        setError("Failed to fetch the score.");
+        setError(
+          "Failed to fetch the score. Response did not contain a valid score."
+        );
       }
     } catch (error) {
-      console.error("Error submitting responses or saving score:", error);
+      // Handle errors in the API calls
+      console.error(
+        "Error submitting responses or saving score:",
+        error.response?.data || error.message
+      );
       setError("Failed to submit responses or save score. Please try again.");
     }
   };

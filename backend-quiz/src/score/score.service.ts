@@ -37,13 +37,16 @@ export class ScoreService {
 
       console.log('Fetching responses for user:', objectId);
 
+      // Check if responses for this user exist before querying
+      const allResponses = await this.responseModel.find().exec();
+      console.log('All Responses in the DB:', allResponses);
+
       // Fetch responses for the user and ensure question is populated
       const responses = await this.responseModel
         .find({ userId: objectId })
         .exec();
-      /* .populate('questionId'); // Populate the questionId field
-       */
-      console.log('Fetched Responses:', responses);
+
+      console.log('Fetched Responses:', responses); // Log fetched responses
 
       if (responses.length === 0) {
         console.log('No responses found for user:', objectId);

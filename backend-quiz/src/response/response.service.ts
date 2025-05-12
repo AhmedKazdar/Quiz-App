@@ -43,8 +43,8 @@ export class ResponseService {
     createResponseDtos: CreateResponseDto[],
   ): Promise<Response[]> {
     const responses = createResponseDtos.map((dto) => ({
-      text: dto.text,
-      questionId: new Types.ObjectId(dto.questionId),
+      text: dto.text, // Convert text to ObjectId if it's a string
+      questionId: new Types.ObjectId(dto.questionId), // Convert questionId to ObjectId
       isCorrect: dto.isCorrect,
       userId: new Types.ObjectId(dto.userId),
     }));

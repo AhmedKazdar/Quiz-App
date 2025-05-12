@@ -9,36 +9,32 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CreateResponseDto = void 0;
-const class_validator_1 = require("@nestjs/class-validator");
-const swagger_1 = require("@nestjs/swagger");
-const mongoose_1 = require("mongoose");
-class CreateResponseDto {
-    text;
+exports.SubmitAnswerDto = void 0;
+const class_validator_1 = require("class-validator");
+class SubmitAnswerDto {
+    userId;
     questionId;
     isCorrect;
-    userId;
+    selectedAnswerText;
 }
-exports.CreateResponseDto = CreateResponseDto;
+exports.SubmitAnswerDto = SubmitAnswerDto;
 __decorate([
-    (0, swagger_1.ApiProperty)({ description: 'Text of the response' }),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
-], CreateResponseDto.prototype, "text", void 0);
+], SubmitAnswerDto.prototype, "userId", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ description: 'Question ID for the response' }),
-    (0, class_validator_1.IsMongoId)(),
-    __metadata("design:type", mongoose_1.Types.ObjectId)
-], CreateResponseDto.prototype, "questionId", void 0);
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    __metadata("design:type", String)
+], SubmitAnswerDto.prototype, "questionId", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ description: 'Mark if the response is correct' }),
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
-], CreateResponseDto.prototype, "isCorrect", void 0);
+], SubmitAnswerDto.prototype, "isCorrect", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)(),
-    (0, class_validator_1.IsMongoId)(),
-    __metadata("design:type", mongoose_1.Types.ObjectId)
-], CreateResponseDto.prototype, "userId", void 0);
-//# sourceMappingURL=create-response.dto.js.map
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsNotEmpty)(),
+    __metadata("design:type", String)
+], SubmitAnswerDto.prototype, "selectedAnswerText", void 0);
+//# sourceMappingURL=submit-answer.dto.js.map

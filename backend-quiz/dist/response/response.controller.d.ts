@@ -3,6 +3,7 @@ import { UserService } from '../user/user.service';
 import { QuestionService } from '../question/question.service';
 import { CreateResponseDto } from './dto/create-response.dto';
 import { UpdateResponseDto } from './dto/update-response.dto';
+import { SubmitAnswerDto } from './dto/submit-answer.dto';
 import { Types } from 'mongoose';
 interface Response {
     userId: Types.ObjectId;
@@ -27,12 +28,7 @@ export declare class ResponseController {
         responses?: undefined;
     }>;
     ping(): string;
-    submitResponses(responses: {
-        userId: string;
-        questionId: string;
-        isCorrect: boolean;
-        selectedAnswerText: string;
-    }[]): Promise<{
+    submitResponses(responses: SubmitAnswerDto[]): Promise<{
         message: string;
         responses: Response[];
         score: number;

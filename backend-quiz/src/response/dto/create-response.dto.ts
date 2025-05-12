@@ -5,6 +5,7 @@ import {
   IsMongoId,
 } from '@nestjs/class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Types } from 'mongoose';
 
 export class CreateResponseDto {
   @ApiProperty({ description: 'Text of the response' })
@@ -14,7 +15,7 @@ export class CreateResponseDto {
 
   @ApiProperty({ description: 'Question ID for the response' })
   @IsMongoId()
-  questionId: string; // Expecting ObjectId in string format
+  questionId: Types.ObjectId; // Expecting ObjectId in string format
 
   @ApiProperty({ description: 'Mark if the response is correct' })
   @IsBoolean()
@@ -22,5 +23,5 @@ export class CreateResponseDto {
 
   @ApiProperty()
   @IsMongoId()
-  userId: string; // Expecting ObjectId in string format
+  userId: Types.ObjectId; // Expecting ObjectId in string format
 }

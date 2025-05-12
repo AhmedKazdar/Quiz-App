@@ -1,6 +1,7 @@
+import { Types } from 'mongoose';
 export declare class CreateResponseDto {
     text: string;
-    questionId: string;
+    questionId: Types.ObjectId;
     isCorrect: boolean;
-    userId: string;
+    userId: Types.ObjectId;
 }

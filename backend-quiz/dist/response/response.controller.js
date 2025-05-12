@@ -60,50 +60,60 @@ let ResponseController = class ResponseController {
         let totalScore = 0;
         for (const responseData of responses) {
             const { userId, questionId, isCorrect, selectedAnswerText } = responseData;
-            console.log('Received responseData:', responseData);
             if (!userId ||
                 !questionId ||
                 typeof isCorrect !== 'boolean' ||
                 !selectedAnswerText) {
-                console.log('Invalid response data, skipping this entry.');
+                console.log('Invalid response data:', responseData);
                 continue;
             }
             try {
+                console.log('Fetching user with ID:', userId);
                 const user = await this.userService.findById(userId);
                 if (!user) {
+                    console.log('User not found for ID:', userId);
                     throw new common_1.NotFoundException(`User ${userId} not found`);
                 }
+                console.log('Fetching question with ID:', questionId);
                 const question = await this.questionService.findById(questionId);
                 if (!question) {
+                    console.log('Question not found for ID:', questionId);
                     throw new common_1.NotFoundException(`Question ${questionId} not found`);
                 }
-                const existingResponse = await this.responseService.findByQuestionId(questionId);
-                if (existingResponse.length > 0) {
-                    console.log('Response already exists for this user and question, skipping.');
+                const existingResponse = await this.responseService.findByUserAndQuestion(userId, questionId);
+                console.log('Checking for existing response...');
+                if (existingResponse) {
+                    console.log('Response already exists for user:', userId, 'and question:', questionId);
                     continue;
                 }
                 const newResponse = await this.responseService.create({
-                    userId,
-                    questionId,
+                    userId: new mongoose_1.Types.ObjectId(userId),
+                    questionId: new mongoose_1.Types.ObjectId(questionId),
                     isCorrect,
                     text: selectedAnswerText,
                 });
-                console.log('Response created:', newResponse);
+                console.log('New Response Saved:', newResponse);
                 results.push(newResponse);
+                const newResponseFormatted = {
+                    ...newResponse,
+                    text: newResponse.text.toString(),
+                };
+                results.push(newResponseFormatted);
                 if (isCorrect) {
                     totalScore += 1;
                 }
             }
             catch (error) {
-                console.error('Error creating response:', error);
+                console.error('Error creating response:', error.message);
                 results.push({
                     userId: new mongoose_1.Types.ObjectId(userId),
                     questionId: new mongoose_1.Types.ObjectId(questionId),
                     isCorrect,
-                    text: 'Error: ' + error.message,
+                    text: `Error: ${error.message}`,
                 });
             }
         }
+        console.log('Final Score:', totalScore);
         return {
             message: 'Responses submitted successfully',
             responses: results,
