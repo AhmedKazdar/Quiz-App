@@ -1,17 +1,18 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import mongoose, { Document, ObjectId, Types } from 'mongoose';
+import { Document, Types } from 'mongoose';
+import { User } from '../user/user.schema'; // Import User schema
 
 export type ScoreDocument = Score & Document;
 
 @Schema()
 export class Score {
-  @Prop({ required: true })
-  score: number;
+  @Prop({ required: true, type: Types.ObjectId, ref: 'User' })
+  userId: Types.ObjectId;
 
-  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true })
-  userId: Types.ObjectId; // Link this to User somehow, e.g., using userId (or ObjectId if it's a ref)
+  @Prop({ required: true, default: 0 })
+  score: number; // Store the score as a number
 
-  @Prop({ default: Date.now })
+  @Prop({ required: true, default: () => new Date() })
   createdAt: Date;
 }
 

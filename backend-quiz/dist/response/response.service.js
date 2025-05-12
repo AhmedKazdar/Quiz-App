@@ -23,8 +23,18 @@ let ResponseService = class ResponseService {
         this.responseModel = responseModel;
     }
     async create(createResponseDto) {
-        const response = new this.responseModel(createResponseDto);
-        return response.save();
+        if (!createResponseDto.userId ||
+            !createResponseDto.questionId ||
+            typeof createResponseDto.isCorrect !== 'boolean') {
+            throw new common_1.BadRequestException('Missing required fields');
+        }
+        const response = new this.responseModel({
+            userId: new mongoose_2.Types.ObjectId(createResponseDto.userId),
+            questionId: new mongoose_2.Types.ObjectId(createResponseDto.questionId),
+            isCorrect: createResponseDto.isCorrect,
+            text: createResponseDto.text || null,
+        });
+        return await response.save();
     }
     async createMultiple(createResponseDtos) {
         const responses = createResponseDtos.map((dto) => ({
@@ -35,6 +45,12 @@ let ResponseService = class ResponseService {
         }));
         console.log('Responses to be inserted:', responses);
         return this.responseModel.insertMany(responses);
+    }
+    async findByUserAndQuestion(userId, questionId) {
+        return this.responseModel.findOne({
+            userId: new mongoose_2.Types.ObjectId(userId),
+            questionId: new mongoose_2.Types.ObjectId(questionId),
+        });
     }
     async findAll() {
         return this.responseModel

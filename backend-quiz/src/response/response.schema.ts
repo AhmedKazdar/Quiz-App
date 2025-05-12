@@ -6,8 +6,8 @@ export type ResponseDocument = Response & Document;
 
 @Schema()
 export class Response {
-  @Prop({ required: true })
-  text: string; //
+  @Prop({ required: false })
+  text: string;
 
   @Prop({ required: true, type: Types.ObjectId, ref: 'Question' })
   questionId: Types.ObjectId;

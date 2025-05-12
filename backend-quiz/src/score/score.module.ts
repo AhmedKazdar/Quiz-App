@@ -7,6 +7,7 @@ import { Score, ScoreSchema } from './score.schema';
 import { User, UserSchema } from '../user/user.schema';
 import { Response, ResponseSchema } from '../response/response.schema';
 import { Question, QuestionSchema } from '../question/question.schema';
+import { UserModule } from 'src/user/user.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { Question, QuestionSchema } from '../question/question.schema';
       { name: Response.name, schema: ResponseSchema },
       { name: Question.name, schema: QuestionSchema },
     ]),
+    UserModule,
   ],
   providers: [ScoreService],
   controllers: [ScoreController],

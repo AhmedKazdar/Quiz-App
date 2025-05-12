@@ -1,17 +1,22 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { ResponseService } from './response.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Response, ResponseSchema } from './response.schema';
 import { ResponseController } from './response.controller';
+import { UserModule } from 'src/user/user.module';
+import { JwtService } from '@nestjs/jwt';
+import { QuestionModule } from 'src/question/question.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Response.name, schema: ResponseSchema },
-    ]), // Ensure the Response schema is added
+    ]),
+    UserModule,
+    forwardRef(() => QuestionModule),
   ],
-  providers: [ResponseService],
+  providers: [ResponseService, JwtService],
   controllers: [ResponseController],
-  exports: [ResponseService], // Ensure ResponseService is exported to be used in other modules
+  exports: [ResponseService],
 })
 export class ResponseModule {}

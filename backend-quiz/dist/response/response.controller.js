@@ -15,21 +15,32 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ResponseController = void 0;
 const common_1 = require("@nestjs/common");
 const response_service_1 = require("./response.service");
+const user_service_1 = require("../user/user.service");
+const question_service_1 = require("../question/question.service");
 const create_response_dto_1 = require("./dto/create-response.dto");
 const update_response_dto_1 = require("./dto/update-response.dto");
 const swagger_1 = require("@nestjs/swagger");
+const mongoose_1 = require("mongoose");
 let ResponseController = class ResponseController {
     responseService;
-    constructor(responseService) {
+    userService;
+    questionService;
+    constructor(responseService, userService, questionService) {
         this.responseService = responseService;
+        this.userService = userService;
+        this.questionService = questionService;
     }
     async create(createResponseDto) {
+        const { questionId } = createResponseDto;
+        if (!mongoose_1.Types.ObjectId.isValid(questionId)) {
+            throw new common_1.BadRequestException('Invalid questionId format');
+        }
         try {
             const response = await this.responseService.create(createResponseDto);
             return { message: 'Response created successfully', response };
         }
         catch (error) {
-            return { message: error.message };
+            throw new common_1.BadRequestException('Failed to create response');
         }
     }
     async createMultiple(createResponseDtos) {
@@ -40,6 +51,64 @@ let ResponseController = class ResponseController {
         catch (error) {
             return { message: error.message };
         }
+    }
+    ping() {
+        return 'pong';
+    }
+    async submitResponses(responses) {
+        const results = [];
+        let totalScore = 0;
+        for (const responseData of responses) {
+            const { userId, questionId, isCorrect, selectedAnswerText } = responseData;
+            console.log('Received responseData:', responseData);
+            if (!userId ||
+                !questionId ||
+                typeof isCorrect !== 'boolean' ||
+                !selectedAnswerText) {
+                console.log('Invalid response data, skipping this entry.');
+                continue;
+            }
+            try {
+                const user = await this.userService.findById(userId);
+                if (!user) {
+                    throw new common_1.NotFoundException(`User ${userId} not found`);
+                }
+                const question = await this.questionService.findById(questionId);
+                if (!question) {
+                    throw new common_1.NotFoundException(`Question ${questionId} not found`);
+                }
+                const existingResponse = await this.responseService.findByQuestionId(questionId);
+                if (existingResponse.length > 0) {
+                    console.log('Response already exists for this user and question, skipping.');
+                    continue;
+                }
+                const newResponse = await this.responseService.create({
+                    userId,
+                    questionId,
+                    isCorrect,
+                    text: selectedAnswerText,
+                });
+                console.log('Response created:', newResponse);
+                results.push(newResponse);
+                if (isCorrect) {
+                    totalScore += 1;
+                }
+            }
+            catch (error) {
+                console.error('Error creating response:', error);
+                results.push({
+                    userId: new mongoose_1.Types.ObjectId(userId),
+                    questionId: new mongoose_1.Types.ObjectId(questionId),
+                    isCorrect,
+                    text: 'Error: ' + error.message,
+                });
+            }
+        }
+        return {
+            message: 'Responses submitted successfully',
+            responses: results,
+            score: totalScore,
+        };
     }
     async findAll() {
         try {
@@ -94,8 +163,8 @@ __decorate([
 ], ResponseController.prototype, "create", null);
 __decorate([
     (0, common_1.Post)('create-multiple'),
-    (0, swagger_1.ApiOperation)({ summary: 'Creates a new response' }),
-    (0, swagger_1.ApiCreatedResponse)({ description: 'Response created successfully' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Creates multiple responses' }),
+    (0, swagger_1.ApiCreatedResponse)({ description: 'Responses created successfully' }),
     (0, swagger_1.ApiBadRequestResponse)({ description: 'Invalid data provided' }),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
@@ -103,20 +172,37 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ResponseController.prototype, "createMultiple", null);
 __decorate([
-    (0, common_1.Get)(),
-    (0, swagger_1.ApiOperation)({ summary: 'Fetch a list of answers ' }),
-    (0, swagger_1.ApiOkResponse)({
-        description: 'List of answers fetched sucessfully.',
+    (0, common_1.Get)('ping'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], ResponseController.prototype, "ping", null);
+__decorate([
+    (0, common_1.Post)('submit'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Submit multiple responses (userId, questionId, isCorrect)',
     }),
+    (0, swagger_1.ApiCreatedResponse)({ description: 'Responses submitted successfully' }),
+    (0, swagger_1.ApiBadRequestResponse)({ description: 'Invalid data provided' }),
+    (0, swagger_1.ApiNotFoundResponse)({ description: 'User or Question not found' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Array]),
+    __metadata("design:returntype", Promise)
+], ResponseController.prototype, "submitResponses", null);
+__decorate([
+    (0, common_1.Get)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Fetch a list of responses' }),
+    (0, swagger_1.ApiOkResponse)({ description: 'List of responses fetched successfully' }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], ResponseController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Get)('question/:questionId'),
-    (0, swagger_1.ApiOperation)({ summary: 'Fetch a answer by id' }),
-    (0, swagger_1.ApiOkResponse)({ description: 'Answer found' }),
-    (0, swagger_1.ApiNotFoundResponse)({ description: 'Answer not found.' }),
+    (0, swagger_1.ApiOperation)({ summary: 'Fetch responses by questionId' }),
+    (0, swagger_1.ApiOkResponse)({ description: 'Responses found' }),
+    (0, swagger_1.ApiNotFoundResponse)({ description: 'No responses found for the question' }),
     __param(0, (0, common_1.Param)('questionId')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -140,6 +226,8 @@ __decorate([
 exports.ResponseController = ResponseController = __decorate([
     (0, swagger_1.ApiTags)('response'),
     (0, common_1.Controller)('response'),
-    __metadata("design:paramtypes", [response_service_1.ResponseService])
+    __metadata("design:paramtypes", [response_service_1.ResponseService,
+        user_service_1.UserService,
+        question_service_1.QuestionService])
 ], ResponseController);
 //# sourceMappingURL=response.controller.js.map

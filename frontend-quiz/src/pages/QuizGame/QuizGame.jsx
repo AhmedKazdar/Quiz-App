@@ -7,16 +7,15 @@ import {
   DialogContent,
   DialogTitle,
   LinearProgress,
-  Snackbar,
 } from "@mui/material";
 import { useNavigate, useLocation } from "react-router-dom";
-import RandomImage from "../../components/RandomImage/RandomImage";
 import "./QuizGame.css";
 
 const QuizGame = () => {
   const [questions, setQuestions] = useState([]);
   const [score, setScore] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [finalScore, setFinalScore] = useState(0);
   const [showFinalScore, setShowFinalScore] = useState(false);
   const [selected, setSelected] = useState(false);
   const [timeLeft, setTimeLeft] = useState(10);
@@ -28,9 +27,8 @@ const QuizGame = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const quizMode = location.state?.mode || "practice"; // 'online' or 'practice'
+  const quizMode = location.state?.mode || "practice";
 
-  // Fetch questions and responses
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -49,14 +47,12 @@ const QuizGame = () => {
           )
         );
 
-        let finalQuestions;
-        if (quizMode === "practice") {
-          finalQuestions = filteredQuestions.sort(() => Math.random() - 0.5);
-        } else {
-          finalQuestions = filteredQuestions; // keep order for online
-        }
-        setQuestions(finalQuestions);
+        const finalQuestions =
+          quizMode === "practice"
+            ? filteredQuestions.sort(() => Math.random() - 0.5)
+            : filteredQuestions;
 
+        setQuestions(finalQuestions);
         setResponses(allResponses);
       } catch (error) {
         console.error("Error fetching quiz data:", error);
@@ -65,22 +61,23 @@ const QuizGame = () => {
     };
 
     fetchData();
-  }, []);
+  }, [quizMode]);
 
-  // Update responses when question changes
   useEffect(() => {
     if (questions.length > 0 && responses.length > 0) {
       setTimeLeft(10);
       const currentQuestion = questions[currentQuestionIndex];
-      const current = responses.filter(
-        (r) => String(r.questionId._id) === String(currentQuestion?._id)
-      );
+      const current = responses.filter((r) => {
+        const responseQuestionId =
+          typeof r.questionId === "object" ? r.questionId._id : r.questionId;
+        return String(responseQuestionId) === String(currentQuestion?._id);
+      });
+
       setShuffledResponses(current.sort(() => Math.random() - 0.5));
       setSelected(false);
     }
   }, [currentQuestionIndex, responses, questions]);
 
-  // Countdown timer
   useEffect(() => {
     if (timeLeft > 0 && !selected) {
       const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
@@ -90,43 +87,50 @@ const QuizGame = () => {
     }
   }, [timeLeft, selected]);
 
-  // Handle answer selection
   const handleAnswerSelection = (response) => {
     if (selected) return;
     setSelected(true);
 
     const isCorrect = response.isCorrect;
 
+    const questionId =
+      typeof response.questionId === "object"
+        ? response.questionId._id
+        : response.questionId;
+
+    const correctAnswer = responses.find(
+      (r) =>
+        (typeof r.questionId === "object" ? r.questionId._id : r.questionId) ===
+          questionId && r.isCorrect === true
+    );
+
     setSelectedAnswers((prev) => [
       ...prev,
       {
-        questionId: response.questionId._id,
+        questionId: questionId,
         selectedAnswerId: response._id,
+        selectedAnswerText: response.text,
+        correctAnswerId: correctAnswer?._id,
       },
     ]);
 
     if (isCorrect) {
       setScore((prev) => prev + 1);
-
       if (quizMode === "online") {
-        // Proceed to next question automatically after a short delay
         setTimeout(() => {
           if (currentQuestionIndex < questions.length - 1) {
             setCurrentQuestionIndex((prev) => prev + 1);
             setSelected(false);
             setTimeLeft(10);
           } else {
-            handleFinishQuiz(); // Finish the quiz when it's the last question
+            handleFinishQuiz();
           }
         }, 1000);
       }
-    } else {
-      // If wrong in online mode, show results
-      if (quizMode === "online") {
-        setTimeout(() => {
-          handleFinishQuiz(); // Finish the quiz when it's wrong
-        }, 500);
-      }
+    } else if (quizMode === "online") {
+      setTimeout(() => {
+        handleFinishQuiz();
+      }, 500);
     }
   };
 
@@ -140,21 +144,45 @@ const QuizGame = () => {
 
   const handleFinishQuiz = async () => {
     setShowFinalScore(true);
+    const userId = localStorage.getItem("userId");
 
-    // Calculate rankings locally if needed, here assuming you want the rankings based on score
-    const finalScore = score;
-    const userRank = ranking.findIndex((rank) => rank.userId === userId) + 1;
+    if (!userId) {
+      setError("User not found. Please log in again.");
+      return;
+    }
 
-    console.log("Final Score:", finalScore);
-    console.log("User Rank:", userRank); // You could display this in the dialog too
+    // Ensure that selectedAnswers has the right structure
+    const formattedAnswers = selectedAnswers.map((answer) => ({
+      userId,
+      questionId: answer.questionId,
+      isCorrect: answer.selectedAnswerId === answer.correctAnswerId,
+      text: answer.selectedAnswerText || "", // Add fallback if no text available
+    }));
 
-    // Optionally save the score locally or update ranking
-    setFinalScore(finalScore);
+    try {
+      // Submit the responses
+      const response = await axios.post(
+        "http://localhost:3001/response/submit",
+        formattedAnswers
+      );
 
-    // Redirect after a brief delay (or immediately)
-    setTimeout(() => {
-      navigate("/home");
-    }, 8000);
+      console.log("Responses submitted successfully:", response.data);
+
+      // Now calculate the score after the responses are saved
+      const scoreResponse = await axios.post(
+        `http://localhost:3001/score/calculate/${userId}`
+      );
+      console.log("Score saved successfully:", scoreResponse.data);
+
+      if (scoreResponse.data?.score !== undefined) {
+        setFinalScore(scoreResponse.data.score);
+      } else {
+        setError("Failed to fetch the score.");
+      }
+    } catch (error) {
+      console.error("Error submitting responses or saving score:", error);
+      setError("Failed to submit responses or save score. Please try again.");
+    }
   };
 
   const handleRestartQuiz = () => {
@@ -259,13 +287,11 @@ const QuizGame = () => {
                 Top 5 Rankings:
               </Typography>
               {ranking.length > 0 ? (
-                <div>
-                  {ranking.map((rank, index) => (
-                    <Typography key={rank._id} variant="body1">
-                      {index + 1}. {rank.userId.username}: {rank.score} points
-                    </Typography>
-                  ))}
-                </div>
+                ranking.map((rank, index) => (
+                  <Typography key={rank._id} variant="body1">
+                    {index + 1}. {rank.userId.username}: {rank.score} points
+                  </Typography>
+                ))
               ) : (
                 <Typography variant="body1">
                   No rankings available yet.
@@ -293,18 +319,7 @@ const QuizGame = () => {
               </Button>
             </DialogContent>
           </Dialog>
-
-          <Snackbar
-            open={error !== ""}
-            message={error}
-            autoHideDuration={3000}
-            onClose={() => setError("")}
-          />
         </div>
-      </div>
-
-      <div className="quiz-footer">
-        <RandomImage />
       </div>
     </div>
   );

@@ -12,6 +12,9 @@ const response_service_1 = require("./response.service");
 const mongoose_1 = require("@nestjs/mongoose");
 const response_schema_1 = require("./response.schema");
 const response_controller_1 = require("./response.controller");
+const user_module_1 = require("../user/user.module");
+const jwt_1 = require("@nestjs/jwt");
+const question_module_1 = require("../question/question.module");
 let ResponseModule = class ResponseModule {
 };
 exports.ResponseModule = ResponseModule;
@@ -21,8 +24,10 @@ exports.ResponseModule = ResponseModule = __decorate([
             mongoose_1.MongooseModule.forFeature([
                 { name: response_schema_1.Response.name, schema: response_schema_1.ResponseSchema },
             ]),
+            user_module_1.UserModule,
+            (0, common_1.forwardRef)(() => question_module_1.QuestionModule),
         ],
-        providers: [response_service_1.ResponseService],
+        providers: [response_service_1.ResponseService, jwt_1.JwtService],
         controllers: [response_controller_1.ResponseController],
         exports: [response_service_1.ResponseService],
     })

@@ -13,21 +13,21 @@ exports.ScoreSchema = exports.Score = void 0;
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 let Score = class Score {
-    score;
     userId;
+    score;
     createdAt;
 };
 exports.Score = Score;
 __decorate([
-    (0, mongoose_1.Prop)({ required: true }),
-    __metadata("design:type", Number)
-], Score.prototype, "score", void 0);
-__decorate([
-    (0, mongoose_1.Prop)({ type: mongoose_2.default.Schema.Types.ObjectId, ref: 'User', required: true }),
+    (0, mongoose_1.Prop)({ required: true, type: mongoose_2.Types.ObjectId, ref: 'User' }),
     __metadata("design:type", mongoose_2.Types.ObjectId)
 ], Score.prototype, "userId", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ default: Date.now }),
+    (0, mongoose_1.Prop)({ required: true, default: 0 }),
+    __metadata("design:type", Number)
+], Score.prototype, "score", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ required: true, default: () => new Date() }),
     __metadata("design:type", Date)
 ], Score.prototype, "createdAt", void 0);
 exports.Score = Score = __decorate([

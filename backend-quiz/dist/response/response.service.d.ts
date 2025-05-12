@@ -7,6 +7,7 @@ export declare class ResponseService {
     constructor(responseModel: Model<ResponseDocument>);
     create(createResponseDto: CreateResponseDto): Promise<Response>;
     createMultiple(createResponseDtos: CreateResponseDto[]): Promise<Response[]>;
+    findByUserAndQuestion(userId: string, questionId: string): Promise<Response | null>;
     findAll(): Promise<Response[]>;
     findById(id: string): Promise<Response>;
     update(id: string, updateDto: UpdateResponseDto): Promise<Response>;

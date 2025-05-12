@@ -5,6 +5,7 @@ export declare class QuestionService {
     private questionModel;
     constructor(questionModel: Model<QuestionDocument>);
     create(createQuestionDto: CreateQuestionDto): Promise<Question>;
+    findById(id: string): Promise<Question>;
     findAll(): Promise<Question[]>;
     findOne(id: string): Promise<Question | null>;
     updateQuestion(id: string, updateQuestionDto: CreateQuestionDto): Promise<Question | null>;

@@ -29,6 +29,10 @@
   flex-direction: row;
   gap: 1rem;
   margin-top: 1.5rem;
+  justify-content: flex-start; /* default for admins */
+}
+.centered-button {
+  justify-content: center;
 }
 
 .nav-btn {

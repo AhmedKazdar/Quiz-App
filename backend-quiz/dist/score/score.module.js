@@ -15,6 +15,7 @@ const score_schema_1 = require("./score.schema");
 const user_schema_1 = require("../user/user.schema");
 const response_schema_1 = require("../response/response.schema");
 const question_schema_1 = require("../question/question.schema");
+const user_module_1 = require("../user/user.module");
 let ScoreModule = class ScoreModule {
 };
 exports.ScoreModule = ScoreModule;
@@ -27,6 +28,7 @@ exports.ScoreModule = ScoreModule = __decorate([
                 { name: response_schema_1.Response.name, schema: response_schema_1.ResponseSchema },
                 { name: question_schema_1.Question.name, schema: question_schema_1.QuestionSchema },
             ]),
+            user_module_1.UserModule,
         ],
         providers: [score_service_1.ScoreService],
         controllers: [score_controller_1.ScoreController],

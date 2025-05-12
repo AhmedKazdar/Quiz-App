@@ -195,7 +195,11 @@ const Home = () => {
             </button>
           </div>
         ) : (
-          <div className="button-group">
+          <div
+            className={`button-group ${
+              role !== "admin" ? "centered-button" : ""
+            }`}
+          >
             <button
               className="nav-btn"
               onClick={() => setShowModeOptions(true)}

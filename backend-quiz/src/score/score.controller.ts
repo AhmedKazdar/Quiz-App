@@ -16,6 +16,7 @@ export class ScoreController {
 
   constructor(private readonly scoreService: ScoreService) {}
 
+  // Endpoint to calculate score for a specific user
   @Post('calculate/:userId')
   async calculateScore(@Param('userId') userId: string): Promise<Score> {
     try {
@@ -23,8 +24,7 @@ export class ScoreController {
         throw new BadRequestException('Invalid userId format');
       }
 
-      const userIdObj = new Types.ObjectId(userId);
-      const score = await this.scoreService.calculateScore(userIdObj);
+      const score = await this.scoreService.calculateScore(userId); // Pass string
 
       // Successfully calculate score
       return score;
@@ -34,6 +34,7 @@ export class ScoreController {
     }
   }
 
+  // Endpoint to get top 5 rankings based on score
   @Get('ranking')
   async getTopRanking(): Promise<Score[]> {
     return this.scoreService.getTopRanking();

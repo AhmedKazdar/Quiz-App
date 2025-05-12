@@ -2,62 +2,136 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { User } from '../user/user.schema';
 import { Response } from '../response/response.schema';
+import { Score, ScoreDocument } from './score.schema';
 import { Question } from '../question/question.schema';
-import { Score } from './score.schema';
 
 @Injectable()
 export class ScoreService {
   constructor(
-    @InjectModel(Score.name) private scoreModel: Model<Score>,
+    @InjectModel(Score.name) private scoreModel: Model<ScoreDocument>,
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Response.name) private responseModel: Model<Response>,
     @InjectModel(Question.name) private questionModel: Model<Question>,
   ) {}
 
-  // Function to calculate and save the score
-  async calculateScore(userId: Types.ObjectId): Promise<Score> {
-    console.log(`Calculating score for user: ${userId}`);
-
-    // Fetch all responses for the user
-    const responses = await this.responseModel.find({ userId });
-
-    // Log the responses to see if we get any data
-    console.log('Found responses:', responses);
-
-    // Check if no responses are found for the user
-    if (!responses || responses.length === 0) {
-      throw new NotFoundException('No responses found for this user.');
-    }
-
-    // Calculate the score (just for testing, we're using the number of correct responses)
-    let score = 0;
-    for (const response of responses) {
-      if (response.isCorrect) {
-        score++;
+  async calculateScore(userId: string): Promise<Score> {
+    try {
+      // Validate the userId format
+      if (!Types.ObjectId.isValid(userId)) {
+        throw new BadRequestException('Invalid userId format');
       }
-    }
 
-    // Return a valid Score object (filling in required fields)
-    return {
-      userId,
-      score,
-      createdAt: new Date(),
-      // Add any other necessary fields if required for Score
-    };
+      const objectId = new Types.ObjectId(userId);
+
+      // Check if user exists
+      const userExists = await this.userModel.findById(objectId);
+      if (!userExists) {
+        throw new NotFoundException('User not found');
+      }
+
+      console.log('Fetching responses for user:', objectId);
+
+      // Fetch responses for the user and ensure question is populated
+      const responses = await this.responseModel
+        .find({ userId: objectId })
+        .exec();
+      /* .populate('questionId'); // Populate the questionId field
+       */
+      console.log('Fetched Responses:', responses);
+
+      if (responses.length === 0) {
+        console.log('No responses found for user:', objectId);
+        return { score: 0 } as Score; // Return 0 if no responses found
+      }
+
+      let score = 0;
+
+      // Loop through each response and check if it is correct
+      for (const response of responses) {
+        console.log('Received responseData:', response);
+
+        const isCorrectStr = String(response.isCorrect).toLowerCase();
+
+        if (isCorrectStr !== 'true' && isCorrectStr !== 'false') {
+          console.warn(
+            'Invalid isCorrect value (not a valid boolean string or boolean), skipping:',
+            response,
+          );
+          continue;
+        }
+
+        const isCorrect = isCorrectStr === 'true';
+
+        if (isCorrect) {
+          score += 1;
+        }
+      }
+
+      console.log('Calculated Score:', score);
+
+      // Now update or create the user's score in the Score model
+      const existingScore = await this.scoreModel.findOneAndUpdate(
+        { userId: objectId },
+        { score, createdAt: new Date() },
+        { new: true, upsert: true },
+      );
+
+      console.log('Existing Score After Update:', existingScore);
+
+      // Populate the score with user details
+      const populatedScore = await this.scoreModel
+        .findById(existingScore._id)
+        .populate('userId', 'username')
+        .exec();
+
+      console.log('Populated Score:', populatedScore);
+
+      if (!populatedScore || !populatedScore.userId) {
+        throw new InternalServerErrorException(
+          'User details could not be populated for the score.',
+        );
+      }
+
+      return populatedScore;
+    } catch (error) {
+      console.error(
+        'Error during score calculation:',
+        error.message,
+        error.stack,
+      );
+      throw new InternalServerErrorException(
+        'An error occurred while calculating the score. Please try again later.',
+      );
+    }
   }
 
-  // Function to get top rankings
+  // score.service.ts
+  async syncUserScore(userId: string): Promise<Score> {
+    const correctAnswers = await this.responseModel.countDocuments({
+      userId: new Types.ObjectId(userId),
+      isCorrect: true,
+    });
+
+    return this.scoreModel.findOneAndUpdate(
+      { userId: new Types.ObjectId(userId) },
+      { score: correctAnswers, createdAt: new Date() },
+      { upsert: true, new: true },
+    );
+  }
+
+  // Method to get top rankings
   async getTopRanking(): Promise<Score[]> {
     return await this.scoreModel
       .find()
-      .sort({ score: -1 }) // Sort by score in descending order
-      .limit(5) // Limit to top 5
-      .populate('userId', 'username') // Populate the username field from the User model
+      .sort({ score: -1 })
+      .limit(5)
+      .populate('userId', 'username') // Populate username for ranking
       .exec();
   }
 }

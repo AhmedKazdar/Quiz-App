@@ -20,7 +20,7 @@ let Response = class Response {
 };
 exports.Response = Response;
 __decorate([
-    (0, mongoose_1.Prop)({ required: true }),
+    (0, mongoose_1.Prop)({ required: false }),
     __metadata("design:type", String)
 ], Response.prototype, "text", void 0);
 __decorate([

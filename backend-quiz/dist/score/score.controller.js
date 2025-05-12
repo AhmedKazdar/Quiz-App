@@ -28,8 +28,7 @@ let ScoreController = ScoreController_1 = class ScoreController {
             if (!mongoose_1.Types.ObjectId.isValid(userId)) {
                 throw new common_1.BadRequestException('Invalid userId format');
             }
-            const userIdObj = new mongoose_1.Types.ObjectId(userId);
-            const score = await this.scoreService.calculateScore(userIdObj);
+            const score = await this.scoreService.calculateScore(userId);
             return score;
         }
         catch (error) {

@@ -24,7 +24,7 @@ exports.QuestionModule = QuestionModule = __decorate([
         ],
         controllers: [question_controller_1.QuestionController],
         providers: [question_service_1.QuestionService],
-        exports: [mongoose_1.MongooseModule],
+        exports: [question_service_1.QuestionService, mongoose_1.MongooseModule],
     })
 ], QuestionModule);
 //# sourceMappingURL=question.module.js.map

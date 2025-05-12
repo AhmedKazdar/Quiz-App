@@ -1,29 +1,26 @@
-import { IsString, IsBoolean, IsNotEmpty } from '@nestjs/class-validator';
+import {
+  IsString,
+  IsBoolean,
+  IsNotEmpty,
+  IsMongoId,
+} from '@nestjs/class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateResponseDto {
-  @ApiProperty({
-    description: 'text of the response',
-  })
+  @ApiProperty({ description: 'Text of the response' })
   @IsString()
   @IsNotEmpty()
   text: string;
 
-  @ApiProperty({
-    description: 'questionId of the response',
-  })
-  @IsString()
-  @IsNotEmpty()
-  questionId: string; // Question ID for the response
+  @ApiProperty({ description: 'Question ID for the response' })
+  @IsMongoId()
+  questionId: string; // Expecting ObjectId in string format
 
-  @ApiProperty({
-    description: 'True or false',
-  })
+  @ApiProperty({ description: 'Mark if the response is correct' })
   @IsBoolean()
-  isCorrect: boolean; // Mark if the response is correct
+  isCorrect: boolean;
 
   @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  userId: string;
+  @IsMongoId()
+  userId: string; // Expecting ObjectId in string format
 }

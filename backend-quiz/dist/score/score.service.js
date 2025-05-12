@@ -18,8 +18,8 @@ const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
 const user_schema_1 = require("../user/user.schema");
 const response_schema_1 = require("../response/response.schema");
-const question_schema_1 = require("../question/question.schema");
 const score_schema_1 = require("./score.schema");
+const question_schema_1 = require("../question/question.schema");
 let ScoreService = class ScoreService {
     scoreModel;
     userModel;
@@ -32,23 +32,61 @@ let ScoreService = class ScoreService {
         this.questionModel = questionModel;
     }
     async calculateScore(userId) {
-        console.log(`Calculating score for user: ${userId}`);
-        const responses = await this.responseModel.find({ userId });
-        console.log('Found responses:', responses);
-        if (!responses || responses.length === 0) {
-            throw new common_1.NotFoundException('No responses found for this user.');
-        }
-        let score = 0;
-        for (const response of responses) {
-            if (response.isCorrect) {
-                score++;
+        try {
+            if (!mongoose_2.Types.ObjectId.isValid(userId)) {
+                throw new common_1.BadRequestException('Invalid userId format');
             }
+            const objectId = new mongoose_2.Types.ObjectId(userId);
+            const userExists = await this.userModel.findById(objectId);
+            if (!userExists) {
+                throw new common_1.NotFoundException('User not found');
+            }
+            console.log('Fetching responses for user:', objectId);
+            const responses = await this.responseModel
+                .find({ userId: objectId })
+                .exec();
+            console.log('Fetched Responses:', responses);
+            if (responses.length === 0) {
+                console.log('No responses found for user:', objectId);
+                return { score: 0 };
+            }
+            let score = 0;
+            for (const response of responses) {
+                console.log('Received responseData:', response);
+                const isCorrectStr = String(response.isCorrect).toLowerCase();
+                if (isCorrectStr !== 'true' && isCorrectStr !== 'false') {
+                    console.warn('Invalid isCorrect value (not a valid boolean string or boolean), skipping:', response);
+                    continue;
+                }
+                const isCorrect = isCorrectStr === 'true';
+                if (isCorrect) {
+                    score += 1;
+                }
+            }
+            console.log('Calculated Score:', score);
+            const existingScore = await this.scoreModel.findOneAndUpdate({ userId: objectId }, { score, createdAt: new Date() }, { new: true, upsert: true });
+            console.log('Existing Score After Update:', existingScore);
+            const populatedScore = await this.scoreModel
+                .findById(existingScore._id)
+                .populate('userId', 'username')
+                .exec();
+            console.log('Populated Score:', populatedScore);
+            if (!populatedScore || !populatedScore.userId) {
+                throw new common_1.InternalServerErrorException('User details could not be populated for the score.');
+            }
+            return populatedScore;
         }
-        return {
-            userId,
-            score,
-            createdAt: new Date(),
-        };
+        catch (error) {
+            console.error('Error during score calculation:', error.message, error.stack);
+            throw new common_1.InternalServerErrorException('An error occurred while calculating the score. Please try again later.');
+        }
+    }
+    async syncUserScore(userId) {
+        const correctAnswers = await this.responseModel.countDocuments({
+            userId: new mongoose_2.Types.ObjectId(userId),
+            isCorrect: true,
+        });
+        return this.scoreModel.findOneAndUpdate({ userId: new mongoose_2.Types.ObjectId(userId) }, { score: correctAnswers, createdAt: new Date() }, { upsert: true, new: true });
     }
     async getTopRanking() {
         return await this.scoreModel

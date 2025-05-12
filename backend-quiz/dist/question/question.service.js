@@ -27,6 +27,13 @@ let QuestionService = class QuestionService {
         const newQuestion = new this.questionModel(createQuestionDto);
         return newQuestion.save();
     }
+    async findById(id) {
+        const question = await this.questionModel.findById(id).exec();
+        if (!question) {
+            throw new common_1.NotFoundException('Question not found');
+        }
+        return question;
+    }
     async findAll() {
         return this.questionModel.find().exec();
     }

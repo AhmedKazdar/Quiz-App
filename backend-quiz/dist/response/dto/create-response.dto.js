@@ -20,32 +20,24 @@ class CreateResponseDto {
 }
 exports.CreateResponseDto = CreateResponseDto;
 __decorate([
-    (0, swagger_1.ApiProperty)({
-        description: 'text of the response',
-    }),
+    (0, swagger_1.ApiProperty)({ description: 'Text of the response' }),
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
 ], CreateResponseDto.prototype, "text", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({
-        description: 'questionId of the response',
-    }),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, swagger_1.ApiProperty)({ description: 'Question ID for the response' }),
+    (0, class_validator_1.IsMongoId)(),
     __metadata("design:type", String)
 ], CreateResponseDto.prototype, "questionId", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({
-        description: 'True or false',
-    }),
+    (0, swagger_1.ApiProperty)({ description: 'Mark if the response is correct' }),
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
 ], CreateResponseDto.prototype, "isCorrect", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)(),
-    (0, class_validator_1.IsString)(),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsMongoId)(),
     __metadata("design:type", String)
 ], CreateResponseDto.prototype, "userId", void 0);
 //# sourceMappingURL=create-response.dto.js.map

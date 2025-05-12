@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Response, ResponseDocument } from './response.schema';
@@ -12,9 +16,26 @@ export class ResponseService {
     private readonly responseModel: Model<ResponseDocument>,
   ) {}
 
+  // response.service.ts - FIXED
+  // response.service.ts
   async create(createResponseDto: CreateResponseDto): Promise<Response> {
-    const response = new this.responseModel(createResponseDto);
-    return response.save();
+    // Only validate required fields
+    if (
+      !createResponseDto.userId ||
+      !createResponseDto.questionId ||
+      typeof createResponseDto.isCorrect !== 'boolean'
+    ) {
+      throw new BadRequestException('Missing required fields');
+    }
+
+    const response = new this.responseModel({
+      userId: new Types.ObjectId(createResponseDto.userId),
+      questionId: new Types.ObjectId(createResponseDto.questionId),
+      isCorrect: createResponseDto.isCorrect,
+      text: createResponseDto.text || null, // Make optional
+    });
+
+    return await response.save();
   }
 
   // Create multiple responses
@@ -23,7 +44,7 @@ export class ResponseService {
   ): Promise<Response[]> {
     const responses = createResponseDtos.map((dto) => ({
       text: dto.text,
-      questionId: new Types.ObjectId(dto.questionId), // Convert the string to ObjectId
+      questionId: new Types.ObjectId(dto.questionId),
       isCorrect: dto.isCorrect,
       userId: new Types.ObjectId(dto.userId),
     }));
@@ -33,6 +54,16 @@ export class ResponseService {
 
     // Insert multiple responses
     return this.responseModel.insertMany(responses);
+  }
+
+  async findByUserAndQuestion(
+    userId: string,
+    questionId: string,
+  ): Promise<Response | null> {
+    return this.responseModel.findOne({
+      userId: new Types.ObjectId(userId),
+      questionId: new Types.ObjectId(questionId),
+    });
   }
 
   async findAll(): Promise<Response[]> {

@@ -75,6 +75,7 @@ const ResponsesPage = () => {
   };
 
   const handleCreate = async () => {
+    // Check if all fields are filled
     if (
       newResponses.some((response) => !response.text || !response.questionId)
     ) {
@@ -83,15 +84,45 @@ const ResponsesPage = () => {
     }
 
     try {
+      // Validate questionId for each response (Ensure it's a valid ObjectId format)
       for (const response of newResponses) {
-        await axios.post("http://localhost:3001/response/create", response);
+        if (!response.questionId || response.questionId.trim() === "") {
+          showSnackbar(`Invalid questionId: ${response.questionId}`, "error");
+          return; // Exit early if invalid questionId
+        }
       }
-      fetchResponses();
-      setModalOpen(false);
-      setNewResponses([{ text: "", questionId: "", isCorrect: false }]);
-      showSnackbar("Responses created successfully!", "success");
+
+      // Bulk create responses by sending a batch request to the backend
+      const responseData = newResponses.map((response) => ({
+        text: response.text,
+        questionId: response.questionId, // Assuming it's in ObjectId format
+        isCorrect: response.isCorrect,
+      }));
+
+      // Make the POST request for creating multiple responses at once
+      const res = await axios.post(
+        "http://localhost:3001/response/create-multiple",
+        responseData,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      // Handle success
+      if (res.status === 201) {
+        console.log("Responses created:", res.data);
+        fetchResponses(); // Refresh the responses
+        setModalOpen(false); // Close the modal
+        setNewResponses([{ text: "", questionId: "", isCorrect: false }]); // Reset the form
+        showSnackbar("Responses created successfully!", "success");
+      } else {
+        console.error("Failed to create responses:", res.data);
+        showSnackbar("Failed to create responses.", "error");
+      }
     } catch (error) {
-      console.error("Error creating responses:", error);
+      console.error("Error in handleCreate:", error);
       showSnackbar("Error creating responses.", "error");
     }
   };
