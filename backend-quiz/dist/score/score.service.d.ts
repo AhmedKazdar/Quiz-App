@@ -1,15 +1,13 @@
 import { Model } from 'mongoose';
+import { Score } from './score.schema';
+import { ResponseDocument } from '../response/response.schema';
 import { User } from '../user/user.schema';
-import { Response } from '../response/response.schema';
-import { Score, ScoreDocument } from './score.schema';
-import { Question } from '../question/question.schema';
 export declare class ScoreService {
     private scoreModel;
-    private userModel;
     private responseModel;
-    private questionModel;
-    constructor(scoreModel: Model<ScoreDocument>, userModel: Model<User>, responseModel: Model<Response>, questionModel: Model<Question>);
-    calculateScore(userId: string): Promise<Score>;
+    private userModel;
+    constructor(scoreModel: Model<Score>, responseModel: Model<ResponseDocument>, userModel: Model<User>);
     syncUserScore(userId: string): Promise<Score>;
-    getTopRanking(): Promise<Score[]>;
+    calculateScore(userId: string): Promise<Score>;
+    getTopRanking(limit?: number): Promise<Score[]>;
 }

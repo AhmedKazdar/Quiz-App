@@ -6,6 +6,7 @@ import { ResponseController } from './response.controller';
 import { UserModule } from 'src/user/user.module';
 import { JwtService } from '@nestjs/jwt';
 import { QuestionModule } from 'src/question/question.module';
+import { ScoreModule } from 'src/score/score.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { QuestionModule } from 'src/question/question.module';
     ]),
     UserModule,
     forwardRef(() => QuestionModule),
+    ScoreModule,
   ],
   providers: [ResponseService, JwtService],
   controllers: [ResponseController],

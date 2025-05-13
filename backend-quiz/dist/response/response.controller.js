@@ -17,6 +17,7 @@ const common_1 = require("@nestjs/common");
 const response_service_1 = require("./response.service");
 const user_service_1 = require("../user/user.service");
 const question_service_1 = require("../question/question.service");
+const score_service_1 = require("../score/score.service");
 const create_response_dto_1 = require("./dto/create-response.dto");
 const update_response_dto_1 = require("./dto/update-response.dto");
 const swagger_1 = require("@nestjs/swagger");
@@ -25,10 +26,155 @@ let ResponseController = class ResponseController {
     responseService;
     userService;
     questionService;
-    constructor(responseService, userService, questionService) {
+    scoreService;
+    constructor(responseService, userService, questionService, scoreService) {
         this.responseService = responseService;
         this.userService = userService;
         this.questionService = questionService;
+        this.scoreService = scoreService;
+    }
+    async submitResponses(responses) {
+        if (!responses || !Array.isArray(responses) || responses.length === 0) {
+            throw new common_1.BadRequestException('Invalid or empty responses array');
+        }
+        const results = [];
+        let totalScore = 0;
+        const userId = responses[0]?.userId;
+        if (!userId || !mongoose_1.Types.ObjectId.isValid(userId)) {
+            throw new common_1.BadRequestException('Invalid or missing userId');
+        }
+        console.log('Submitting responses for userId:', userId);
+        const user = await this.userService.findById(userId);
+        if (!user) {
+            throw new common_1.NotFoundException(`User ${userId} not found`);
+        }
+        for (const responseData of responses) {
+            const { userId: responseUserId, questionId, isCorrect, text, selectedAnswerText, } = responseData;
+            console.log('Processing response data:', responseData);
+            if (!responseUserId ||
+                !questionId ||
+                typeof isCorrect !== 'boolean' ||
+                !(text || selectedAnswerText) ||
+                responseUserId !== userId) {
+                console.warn('Invalid response data, skipping:', {
+                    responseUserId,
+                    questionId,
+                    isCorrect,
+                    text,
+                    selectedAnswerText,
+                    userIdMatch: responseUserId === userId,
+                });
+                continue;
+            }
+            if (!mongoose_1.Types.ObjectId.isValid(questionId)) {
+                console.warn('Invalid questionId format, skipping:', questionId);
+                continue;
+            }
+            try {
+                console.log('Fetching question with ID:', questionId);
+                const question = await this.questionService.findById(questionId);
+                if (!question) {
+                    console.warn('Question not found for ID:', questionId);
+                    continue;
+                }
+                console.log('Checking for existing response for user:', userId, 'question:', questionId);
+                const existingResponse = (await this.responseService.findByUserAndQuestion(userId, questionId));
+                if (existingResponse) {
+                    console.log('Response already exists for user:', userId, 'question:', questionId, 'responseId:', existingResponse._id.toString(), 'isCorrect:', existingResponse.isCorrect);
+                    results.push(existingResponse);
+                    if (existingResponse.isCorrect) {
+                        totalScore += 1;
+                    }
+                    continue;
+                }
+                try {
+                    const newResponse = (await this.responseService.create({
+                        userId,
+                        questionId,
+                        isCorrect,
+                        text: text || selectedAnswerText,
+                    }));
+                    console.log('New Response Saved:', {
+                        _id: newResponse._id.toString(),
+                        userId: newResponse.userId.toString(),
+                        questionId: newResponse.questionId.toString(),
+                        isCorrect: newResponse.isCorrect,
+                        text: newResponse.text,
+                    });
+                    results.push(newResponse);
+                    if (isCorrect) {
+                        totalScore += 1;
+                    }
+                }
+                catch (error) {
+                    if (error.code === 11000) {
+                        console.log('Duplicate response detected for user:', userId, 'question:', questionId);
+                        const existing = (await this.responseService.findByUserAndQuestion(userId, questionId));
+                        if (existing) {
+                            console.log('Existing response found after duplicate error:', existing._id.toString(), 'isCorrect:', existing.isCorrect);
+                            results.push(existing);
+                            if (existing.isCorrect) {
+                                totalScore += 1;
+                            }
+                        }
+                        continue;
+                    }
+                    throw error;
+                }
+            }
+            catch (error) {
+                console.error('Error processing response for question:', questionId, error.message);
+                const errorResponse = {
+                    _id: new mongoose_1.Types.ObjectId(),
+                    userId: new mongoose_1.Types.ObjectId(userId),
+                    questionId: new mongoose_1.Types.ObjectId(questionId),
+                    isCorrect,
+                    text: `Error: ${error.message}`,
+                };
+                results.push(errorResponse);
+            }
+        }
+        console.log('Final Score:', totalScore);
+        try {
+            const updatedScore = await this.scoreService.syncUserScore(userId);
+            console.log('Updated Score in DB:', updatedScore);
+        }
+        catch (error) {
+            console.error('Error syncing score:', error.message);
+        }
+        return {
+            message: 'Responses submitted successfully',
+            responses: results,
+            score: totalScore,
+        };
+    }
+    async findAll(userId) {
+        try {
+            if (userId) {
+                if (!mongoose_1.Types.ObjectId.isValid(userId)) {
+                    throw new common_1.BadRequestException('Invalid userId format');
+                }
+                const responses = await this.responseService.findByUserId(userId);
+                return { message: 'Fetched user responses', responses };
+            }
+            const responses = await this.responseService.findAllWithQuestions();
+            return { message: 'Fetched all responses', responses };
+        }
+        catch (error) {
+            return { message: error.message };
+        }
+    }
+    async findByQuestionId(questionId) {
+        try {
+            const responses = await this.responseService.findByQuestionId(questionId);
+            if (responses.length === 0) {
+                return { message: 'No responses found for this question' };
+            }
+            return { message: 'Fetched responses for question', responses };
+        }
+        catch (error) {
+            return { message: error.message };
+        }
     }
     async create(createResponseDto) {
         const { questionId } = createResponseDto;
@@ -55,92 +201,6 @@ let ResponseController = class ResponseController {
     ping() {
         return 'pong';
     }
-    async submitResponses(responses) {
-        const results = [];
-        let totalScore = 0;
-        for (const responseData of responses) {
-            const { userId, questionId, isCorrect, selectedAnswerText } = responseData;
-            if (!userId ||
-                !questionId ||
-                typeof isCorrect !== 'boolean' ||
-                !selectedAnswerText) {
-                console.log('Invalid response data:', responseData);
-                continue;
-            }
-            try {
-                console.log('Fetching user with ID:', userId);
-                const user = await this.userService.findById(userId);
-                if (!user) {
-                    console.log('User not found for ID:', userId);
-                    throw new common_1.NotFoundException(`User ${userId} not found`);
-                }
-                console.log('Fetching question with ID:', questionId);
-                const question = await this.questionService.findById(questionId);
-                if (!question) {
-                    console.log('Question not found for ID:', questionId);
-                    throw new common_1.NotFoundException(`Question ${questionId} not found`);
-                }
-                const existingResponse = await this.responseService.findByUserAndQuestion(userId, questionId);
-                console.log('Checking for existing response...');
-                if (existingResponse) {
-                    console.log('Response already exists for user:', userId, 'and question:', questionId);
-                    continue;
-                }
-                const newResponse = await this.responseService.create({
-                    userId: new mongoose_1.Types.ObjectId(userId),
-                    questionId: new mongoose_1.Types.ObjectId(questionId),
-                    isCorrect,
-                    text: selectedAnswerText,
-                });
-                console.log('New Response Saved:', newResponse);
-                results.push(newResponse);
-                const newResponseFormatted = {
-                    ...newResponse,
-                    text: newResponse.text.toString(),
-                };
-                results.push(newResponseFormatted);
-                if (isCorrect) {
-                    totalScore += 1;
-                }
-            }
-            catch (error) {
-                console.error('Error creating response:', error.message);
-                results.push({
-                    userId: new mongoose_1.Types.ObjectId(userId),
-                    questionId: new mongoose_1.Types.ObjectId(questionId),
-                    isCorrect,
-                    text: `Error: ${error.message}`,
-                });
-            }
-        }
-        console.log('Final Score:', totalScore);
-        return {
-            message: 'Responses submitted successfully',
-            responses: results,
-            score: totalScore,
-        };
-    }
-    async findAll() {
-        try {
-            const responses = await this.responseService.findAllWithQuestions();
-            return { message: 'Fetched all responses', responses };
-        }
-        catch (error) {
-            return { message: error.message };
-        }
-    }
-    async findByQuestionId(questionId) {
-        try {
-            const responses = await this.responseService.findByQuestionId(questionId);
-            if (responses.length === 0) {
-                return { message: 'No responses found for this question' };
-            }
-            return { message: 'Fetched responses for question', responses };
-        }
-        catch (error) {
-            return { message: error.message };
-        }
-    }
     async update(id, updateResponseDto) {
         try {
             const updatedResponse = await this.responseService.update(id, updateResponseDto);
@@ -161,6 +221,38 @@ let ResponseController = class ResponseController {
     }
 };
 exports.ResponseController = ResponseController;
+__decorate([
+    (0, common_1.Post)('submit'),
+    (0, swagger_1.ApiOperation)({
+        summary: 'Submit multiple responses (userId, questionId, isCorrect)',
+    }),
+    (0, swagger_1.ApiCreatedResponse)({ description: 'Responses submitted successfully' }),
+    (0, swagger_1.ApiBadRequestResponse)({ description: 'Invalid data provided' }),
+    (0, swagger_1.ApiNotFoundResponse)({ description: 'User or Question not found' }),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Array]),
+    __metadata("design:returntype", Promise)
+], ResponseController.prototype, "submitResponses", null);
+__decorate([
+    (0, common_1.Get)(),
+    (0, swagger_1.ApiOperation)({ summary: 'Fetch a list of responses' }),
+    (0, swagger_1.ApiOkResponse)({ description: 'List of responses fetched successfully' }),
+    __param(0, (0, common_1.Query)('userId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], ResponseController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)('question/:questionId'),
+    (0, swagger_1.ApiOperation)({ summary: 'Fetch responses by questionId' }),
+    (0, swagger_1.ApiOkResponse)({ description: 'Responses found' }),
+    (0, swagger_1.ApiNotFoundResponse)({ description: 'No responses found for the question' }),
+    __param(0, (0, common_1.Param)('questionId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", Promise)
+], ResponseController.prototype, "findByQuestionId", null);
 __decorate([
     (0, common_1.Post)('create'),
     (0, swagger_1.ApiOperation)({ summary: 'Creates a new response' }),
@@ -188,37 +280,6 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], ResponseController.prototype, "ping", null);
 __decorate([
-    (0, common_1.Post)('submit'),
-    (0, swagger_1.ApiOperation)({
-        summary: 'Submit multiple responses (userId, questionId, isCorrect)',
-    }),
-    (0, swagger_1.ApiCreatedResponse)({ description: 'Responses submitted successfully' }),
-    (0, swagger_1.ApiBadRequestResponse)({ description: 'Invalid data provided' }),
-    (0, swagger_1.ApiNotFoundResponse)({ description: 'User or Question not found' }),
-    __param(0, (0, common_1.Body)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Array]),
-    __metadata("design:returntype", Promise)
-], ResponseController.prototype, "submitResponses", null);
-__decorate([
-    (0, common_1.Get)(),
-    (0, swagger_1.ApiOperation)({ summary: 'Fetch a list of responses' }),
-    (0, swagger_1.ApiOkResponse)({ description: 'List of responses fetched successfully' }),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], ResponseController.prototype, "findAll", null);
-__decorate([
-    (0, common_1.Get)('question/:questionId'),
-    (0, swagger_1.ApiOperation)({ summary: 'Fetch responses by questionId' }),
-    (0, swagger_1.ApiOkResponse)({ description: 'Responses found' }),
-    (0, swagger_1.ApiNotFoundResponse)({ description: 'No responses found for the question' }),
-    __param(0, (0, common_1.Param)('questionId')),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
-    __metadata("design:returntype", Promise)
-], ResponseController.prototype, "findByQuestionId", null);
-__decorate([
     (0, common_1.Put)(':id'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
@@ -238,6 +299,7 @@ exports.ResponseController = ResponseController = __decorate([
     (0, common_1.Controller)('response'),
     __metadata("design:paramtypes", [response_service_1.ResponseService,
         user_service_1.UserService,
-        question_service_1.QuestionService])
+        question_service_1.QuestionService,
+        score_service_1.ScoreService])
 ], ResponseController);
 //# sourceMappingURL=response.controller.js.map

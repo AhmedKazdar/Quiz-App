@@ -16,20 +16,59 @@ exports.ScoreService = void 0;
 const common_1 = require("@nestjs/common");
 const mongoose_1 = require("@nestjs/mongoose");
 const mongoose_2 = require("mongoose");
-const user_schema_1 = require("../user/user.schema");
-const response_schema_1 = require("../response/response.schema");
 const score_schema_1 = require("./score.schema");
-const question_schema_1 = require("../question/question.schema");
+const user_schema_1 = require("../user/user.schema");
 let ScoreService = class ScoreService {
     scoreModel;
-    userModel;
     responseModel;
-    questionModel;
-    constructor(scoreModel, userModel, responseModel, questionModel) {
+    userModel;
+    constructor(scoreModel, responseModel, userModel) {
         this.scoreModel = scoreModel;
-        this.userModel = userModel;
         this.responseModel = responseModel;
-        this.questionModel = questionModel;
+        this.userModel = userModel;
+    }
+    async syncUserScore(userId) {
+        try {
+            if (!mongoose_2.Types.ObjectId.isValid(userId)) {
+                throw new common_1.BadRequestException('Invalid userId format');
+            }
+            const objectId = new mongoose_2.Types.ObjectId(userId);
+            const userExists = await this.userModel.findById(objectId);
+            if (!userExists) {
+                throw new common_1.NotFoundException('User not found');
+            }
+            console.log('Syncing score for user:', objectId.toString());
+            const responses = (await this.responseModel
+                .find({ userId: objectId })
+                .sort({ createdAt: -1 })
+                .exec());
+            console.log('Fetched Responses:', responses.length);
+            const uniqueResponses = [];
+            const seenQuestionIds = new Set();
+            for (const response of responses) {
+                if (!seenQuestionIds.has(response.questionId.toString())) {
+                    uniqueResponses.push(response);
+                    seenQuestionIds.add(response.questionId.toString());
+                }
+            }
+            console.log('Unique Responses:', uniqueResponses.length);
+            const correctAnswers = uniqueResponses.filter((r) => r.isCorrect).length;
+            console.log('Correct Responses Count:', correctAnswers);
+            const updatedScore = await this.scoreModel.findOneAndUpdate({ userId: objectId }, { score: correctAnswers, createdAt: new Date() }, { upsert: true, new: true });
+            const populatedScore = await this.scoreModel
+                .findById(updatedScore._id)
+                .populate('userId', 'username')
+                .exec();
+            if (!populatedScore || !populatedScore.userId) {
+                throw new common_1.InternalServerErrorException('User details could not be populated for the score.');
+            }
+            console.log('Synced Score:', populatedScore.score);
+            return populatedScore;
+        }
+        catch (error) {
+            console.error('Error syncing score:', error.message, error.stack);
+            throw new common_1.InternalServerErrorException('Failed to sync score');
+        }
     }
     async calculateScore(userId) {
         try {
@@ -41,41 +80,32 @@ let ScoreService = class ScoreService {
             if (!userExists) {
                 throw new common_1.NotFoundException('User not found');
             }
-            console.log('Fetching responses for user:', objectId);
-            const allResponses = await this.responseModel.find().exec();
-            console.log('All Responses in the DB:', allResponses);
-            const responses = await this.responseModel
+            console.log('Fetching responses for user:', objectId.toString());
+            const responses = (await this.responseModel
                 .find({ userId: objectId })
-                .exec();
-            console.log('Fetched Responses:', responses);
-            if (responses.length === 0) {
-                console.log('No responses found for user:', objectId);
-                return { score: 0 };
-            }
-            let score = 0;
+                .sort({ createdAt: -1 })
+                .exec());
+            console.log('Fetched Responses:', responses.length);
+            const uniqueResponses = [];
+            const seenQuestionIds = new Set();
             for (const response of responses) {
-                console.log('Received responseData:', response);
-                const isCorrectStr = String(response.isCorrect).toLowerCase();
-                if (isCorrectStr !== 'true' && isCorrectStr !== 'false') {
-                    console.warn('Invalid isCorrect value (not a valid boolean string or boolean), skipping:', response);
-                    continue;
-                }
-                const isCorrect = isCorrectStr === 'true';
-                if (isCorrect) {
-                    score += 1;
+                if (!seenQuestionIds.has(response.questionId.toString())) {
+                    uniqueResponses.push(response);
+                    seenQuestionIds.add(response.questionId.toString());
                 }
             }
-            console.log('Calculated Score:', score);
-            const existingScore = await this.scoreModel.findOneAndUpdate({ userId: objectId }, { score, createdAt: new Date() }, { new: true, upsert: true });
-            console.log('Existing Score After Update:', existingScore);
+            console.log('Unique Responses:', uniqueResponses.length);
+            const correctAnswers = uniqueResponses.filter((r) => r.isCorrect).length;
+            console.log('Correct Responses Count:', correctAnswers);
+            const updatedScore = await this.scoreModel.findOneAndUpdate({ userId: objectId }, { score: correctAnswers, createdAt: new Date() }, { upsert: true, new: true });
             const populatedScore = await this.scoreModel
-                .findById(existingScore._id)
+                .findById(updatedScore._id)
                 .populate('userId', 'username')
                 .exec();
-            console.log('Populated Score:', populatedScore);
             if (!populatedScore || !populatedScore.userId) {
                 throw new common_1.InternalServerErrorException('User details could not be populated for the score.');
             }
+            console.log('Calculated Score:', populatedScore.score);
             return populatedScore;
         }
         catch (error) {
@@ -83,31 +113,30 @@ let ScoreService = class ScoreService {
             throw new common_1.InternalServerErrorException('An error occurred while calculating the score. Please try again later.');
         }
     }
-    async syncUserScore(userId) {
-        const correctAnswers = await this.responseModel.countDocuments({
-            userId: new mongoose_2.Types.ObjectId(userId),
-            isCorrect: true,
-        });
-        return this.scoreModel.findOneAndUpdate({ userId: new mongoose_2.Types.ObjectId(userId) }, { score: correctAnswers, createdAt: new Date() }, { upsert: true, new: true });
-    }
-    async getTopRanking() {
-        return await this.scoreModel
-            .find()
-            .sort({ score: -1 })
-            .limit(5)
-            .populate('userId', 'username')
-            .exec();
+    async getTopRanking(limit = 5) {
+        try {
+            const topScores = await this.scoreModel
+                .find()
+                .sort({ score: -1, createdAt: -1 })
+                .limit(limit)
+                .populate('userId', 'username')
+                .exec();
+            console.log('Fetched top rankings:', topScores);
+            return topScores;
+        }
+        catch (error) {
+            console.error('Error fetching top rankings:', error.message, error.stack);
+            throw new common_1.InternalServerErrorException('Failed to fetch top rankings');
+        }
     }
 };
 exports.ScoreService = ScoreService;
 exports.ScoreService = ScoreService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, mongoose_1.InjectModel)(score_schema_1.Score.name)),
-    __param(1, (0, mongoose_1.InjectModel)(user_schema_1.User.name)),
-    __param(2, (0, mongoose_1.InjectModel)(response_schema_1.Response.name)),
-    __param(3, (0, mongoose_1.InjectModel)(question_schema_1.Question.name)),
+    __param(1, (0, mongoose_1.InjectModel)('Response')),
+    __param(2, (0, mongoose_1.InjectModel)(user_schema_1.User.name)),
     __metadata("design:paramtypes", [mongoose_2.Model,
-        mongoose_2.Model,
         mongoose_2.Model,
         mongoose_2.Model])
 ], ScoreService);

@@ -24,10 +24,14 @@ const QuizGame = () => {
   const [error, setError] = useState("");
   const [responses, setResponses] = useState([]);
   const [ranking, setRanking] = useState([]);
+  const [isRestarted, setIsRestarted] = useState(false); // Track restart
   const navigate = useNavigate();
   const location = useLocation();
 
   const quizMode = location.state?.mode || "practice";
+  const quizSessionId = `quiz_${new Date().getTime()}_${Math.random()
+    .toString(36)
+    .slice(2)}`; // Unique session ID
 
   useEffect(() => {
     const fetchData = async () => {
@@ -146,61 +150,101 @@ const QuizGame = () => {
     setShowFinalScore(true);
     const userId = localStorage.getItem("userId");
 
-    // Check if the user is logged in
     if (!userId) {
       setError("User not found. Please log in again.");
       return;
     }
 
-    // Log userId for debugging
     console.log("Fetched userId from localStorage:", userId);
 
-    // Ensure that selectedAnswers has the right structure
-    console.log("Selected Answers:", selectedAnswers);
-
-    // Format answers for submission
-    const formattedAnswers = selectedAnswers.map((answer) => ({
-      userId,
-      questionId: answer.questionId,
-      isCorrect: answer.selectedAnswerId === answer.correctAnswerId,
-      text: answer.selectedAnswerText || "", // Add fallback if no text available
-    }));
-
     try {
-      // Submit the responses to the backend
+      // Fetch existing responses
+      const existingResponses = await axios.get(
+        `http://localhost:3001/response?userId=${userId}`
+      );
+      console.log("Existing responses:", existingResponses.data);
+
+      const existingQuestionIds = new Set(
+        existingResponses.data.responses.map((r) => r.questionId.toString())
+      );
+      console.log("Existing question IDs:", existingQuestionIds);
+
+      if (isRestarted) {
+        console.log("Quiz restarted, skipping response submission");
+        // Skip submission, only fetch score
+        const scoreResponse = await axios.post(
+          `http://localhost:3001/score/calculate/${userId}`
+        );
+        console.log("Score fetched successfully:", scoreResponse.data);
+        if (scoreResponse.data?.score !== undefined) {
+          setFinalScore(scoreResponse.data.score);
+        } else {
+          setError("Failed to fetch the score.");
+        }
+        return;
+      }
+
+      // Filter out already answered questions
+      const newAnswers = selectedAnswers.filter(
+        (answer) => !existingQuestionIds.has(answer.questionId.toString())
+      );
+      console.log("New Answers to Submit:", newAnswers);
+
+      if (newAnswers.length === 0) {
+        console.log("No new answers to submit, fetching score only");
+        const scoreResponse = await axios.post(
+          `http://localhost:3001/score/calculate/${userId}`
+        );
+        console.log("Score fetched successfully:", scoreResponse.data);
+        if (scoreResponse.data?.score !== undefined) {
+          setFinalScore(scoreResponse.data.score);
+        } else {
+          setError("Failed to fetch the score.");
+        }
+        return;
+      }
+
+      // Format answers for submission
+      const formattedAnswers = newAnswers.map((answer) => ({
+        userId,
+        questionId: answer.questionId,
+        isCorrect: answer.selectedAnswerId === answer.correctAnswerId,
+        text: answer.selectedAnswerText || "",
+      }));
+
+      console.log("Submitting responses:", formattedAnswers);
       const response = await axios.post(
         "http://localhost:3001/response/submit",
         formattedAnswers
       );
-
       console.log("Responses submitted successfully:", response.data);
 
-      // Check if responses were successfully saved
       if (response.data?.message !== "Responses submitted successfully") {
-        throw new Error("Failed to submit responses. Please try again.");
+        throw new Error("Failed to submit responses.");
       }
 
-      // Now calculate the score after the responses are saved
+      // Mark responses as submitted
+      localStorage.setItem(`submitted_${userId}_${quizSessionId}`, "true");
+
+      // Fetch score
       const scoreResponse = await axios.post(
         `http://localhost:3001/score/calculate/${userId}`
       );
       console.log("Score saved successfully:", scoreResponse.data);
-
-      // Check if the score was returned successfully
       if (scoreResponse.data?.score !== undefined) {
         setFinalScore(scoreResponse.data.score);
       } else {
-        setError(
-          "Failed to fetch the score. Response did not contain a valid score."
-        );
+        setError("Failed to fetch the score.");
       }
-    } catch (error) {
-      // Handle errors in the API calls
-      console.error(
-        "Error submitting responses or saving score:",
-        error.response?.data || error.message
+
+      // Fetch rankings
+      const rankingResponse = await axios.get(
+        "http://localhost:3001/score/ranking"
       );
-      setError("Failed to submit responses or save score. Please try again.");
+      setRanking(rankingResponse.data);
+    } catch (error) {
+      console.error("Error in handleFinishQuiz:", error.message);
+      setError("Failed to process quiz results. Please try again.");
     }
   };
 
@@ -210,11 +254,15 @@ const QuizGame = () => {
     setSelected(false);
     setSelectedAnswers([]);
     setShowFinalScore(false);
+    setIsRestarted(true); // Mark as restarted
+    console.log("Quiz restarted, isRestarted set to true");
+    setTimeLeft(10);
+    // Do not clear submission flag to prevent resubmission
   };
 
   const getResultMessage = () => {
-    if (score === questions.length) return "Amazing! Perfect Score!";
-    if (score >= questions.length / 2) return "Good Job!";
+    if (finalScore === questions.length) return "Amazing! Perfect Score!";
+    if (finalScore >= questions.length / 2) return "Good Job!";
     return "Better Luck Next Time!";
   };
 
@@ -298,7 +346,7 @@ const QuizGame = () => {
             </DialogTitle>
             <DialogContent className="dialog-content">
               <Typography variant="h5" gutterBottom>
-                Your Score: {score} / {questions.length}
+                Your Score: {finalScore} / {questions.length}
               </Typography>
               <Typography variant="h6">{getResultMessage()}</Typography>
 

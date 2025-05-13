@@ -35,8 +35,8 @@ export class ScoreController {
   }
 
   // Endpoint to get top 5 rankings based on score
-  @Get('ranking')
+  /* @Get('ranking')
   async getTopRanking(): Promise<Score[]> {
     return this.scoreService.getTopRanking();
-  }
+  } */
 }

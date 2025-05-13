@@ -5,5 +5,4 @@ export declare class ScoreController {
     private readonly logger;
     constructor(scoreService: ScoreService);
     calculateScore(userId: string): Promise<Score>;
-    getTopRanking(): Promise<Score[]>;
 }

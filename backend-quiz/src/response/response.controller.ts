@@ -8,10 +8,12 @@ import {
   Delete,
   NotFoundException,
   BadRequestException,
+  Query,
 } from '@nestjs/common';
 import { ResponseService } from './response.service';
 import { UserService } from '../user/user.service';
 import { QuestionService } from '../question/question.service';
+import { ScoreService } from '../score/score.service';
 import { CreateResponseDto } from './dto/create-response.dto';
 import { UpdateResponseDto } from './dto/update-response.dto';
 import { SubmitAnswerDto } from './dto/submit-answer.dto';
@@ -23,15 +25,16 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { Types } from 'mongoose';
+import { Types, Document } from 'mongoose';
 
-// Define a type for the response object (this can be the same as your DTO if needed)
-interface Response {
+// Ensure ResponseDocument includes _id
+export type ResponseDocument = Document & {
+  _id: Types.ObjectId;
   userId: Types.ObjectId;
   questionId: Types.ObjectId;
   isCorrect: boolean;
   text: string;
-}
+};
 
 @ApiTags('response')
 @Controller('response')
@@ -40,7 +43,223 @@ export class ResponseController {
     private readonly responseService: ResponseService,
     private readonly userService: UserService,
     private readonly questionService: QuestionService,
+    private readonly scoreService: ScoreService,
   ) {}
+
+  @Post('submit')
+  @ApiOperation({
+    summary: 'Submit multiple responses (userId, questionId, isCorrect)',
+  })
+  @ApiCreatedResponse({ description: 'Responses submitted successfully' })
+  @ApiBadRequestResponse({ description: 'Invalid data provided' })
+  @ApiNotFoundResponse({ description: 'User or Question not found' })
+  async submitResponses(@Body() responses: any[]) {
+    if (!responses || !Array.isArray(responses) || responses.length === 0) {
+      throw new BadRequestException('Invalid or empty responses array');
+    }
+
+    const results: ResponseDocument[] = [];
+    let totalScore = 0;
+    const userId = responses[0]?.userId;
+
+    if (!userId || !Types.ObjectId.isValid(userId)) {
+      throw new BadRequestException('Invalid or missing userId');
+    }
+
+    console.log('Submitting responses for userId:', userId);
+
+    const user = await this.userService.findById(userId);
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+
+    for (const responseData of responses) {
+      const {
+        userId: responseUserId,
+        questionId,
+        isCorrect,
+        text,
+        selectedAnswerText,
+      } = responseData;
+
+      console.log('Processing response data:', responseData);
+
+      if (
+        !responseUserId ||
+        !questionId ||
+        typeof isCorrect !== 'boolean' ||
+        !(text || selectedAnswerText) ||
+        responseUserId !== userId
+      ) {
+        console.warn('Invalid response data, skipping:', {
+          responseUserId,
+          questionId,
+          isCorrect,
+          text,
+          selectedAnswerText,
+          userIdMatch: responseUserId === userId,
+        });
+        continue;
+      }
+
+      if (!Types.ObjectId.isValid(questionId)) {
+        console.warn('Invalid questionId format, skipping:', questionId);
+        continue;
+      }
+
+      try {
+        console.log('Fetching question with ID:', questionId);
+        const question = await this.questionService.findById(questionId);
+        if (!question) {
+          console.warn('Question not found for ID:', questionId);
+          continue;
+        }
+
+        console.log(
+          'Checking for existing response for user:',
+          userId,
+          'question:',
+          questionId,
+        );
+        const existingResponse =
+          (await this.responseService.findByUserAndQuestion(
+            userId,
+            questionId,
+          )) as ResponseDocument | null;
+        if (existingResponse) {
+          console.log(
+            'Response already exists for user:',
+            userId,
+            'question:',
+            questionId,
+            'responseId:',
+            existingResponse._id.toString(),
+            'isCorrect:',
+            existingResponse.isCorrect,
+          );
+          results.push(existingResponse);
+          if (existingResponse.isCorrect) {
+            totalScore += 1;
+          }
+          continue;
+        }
+
+        try {
+          const newResponse = (await this.responseService.create({
+            userId,
+            questionId,
+            isCorrect,
+            text: text || selectedAnswerText,
+          })) as ResponseDocument;
+
+          console.log('New Response Saved:', {
+            _id: newResponse._id.toString(),
+            userId: newResponse.userId.toString(),
+            questionId: newResponse.questionId.toString(),
+            isCorrect: newResponse.isCorrect,
+            text: newResponse.text,
+          });
+          results.push(newResponse);
+
+          if (isCorrect) {
+            totalScore += 1;
+          }
+        } catch (error) {
+          if (error.code === 11000) {
+            console.log(
+              'Duplicate response detected for user:',
+              userId,
+              'question:',
+              questionId,
+            );
+            const existing = (await this.responseService.findByUserAndQuestion(
+              userId,
+              questionId,
+            )) as ResponseDocument | null;
+            if (existing) {
+              console.log(
+                'Existing response found after duplicate error:',
+                existing._id.toString(),
+                'isCorrect:',
+                existing.isCorrect,
+              );
+              results.push(existing);
+              if (existing.isCorrect) {
+                totalScore += 1;
+              }
+            }
+            continue;
+          }
+          throw error;
+        }
+      } catch (error) {
+        console.error(
+          'Error processing response for question:',
+          questionId,
+          error.message,
+        );
+        // Create a partial ResponseDocument for error cases
+        const errorResponse = {
+          _id: new Types.ObjectId(), // Generate a temporary _id
+          userId: new Types.ObjectId(userId),
+          questionId: new Types.ObjectId(questionId),
+          isCorrect,
+          text: `Error: ${error.message}`,
+        } as ResponseDocument;
+        results.push(errorResponse);
+      }
+    }
+
+    console.log('Final Score:', totalScore);
+
+    try {
+      const updatedScore = await this.scoreService.syncUserScore(userId);
+      console.log('Updated Score in DB:', updatedScore);
+    } catch (error) {
+      console.error('Error syncing score:', error.message);
+    }
+
+    return {
+      message: 'Responses submitted successfully',
+      responses: results,
+      score: totalScore,
+    };
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Fetch a list of responses' })
+  @ApiOkResponse({ description: 'List of responses fetched successfully' })
+  async findAll(@Query('userId') userId?: string) {
+    try {
+      if (userId) {
+        if (!Types.ObjectId.isValid(userId)) {
+          throw new BadRequestException('Invalid userId format');
+        }
+        const responses = await this.responseService.findByUserId(userId);
+        return { message: 'Fetched user responses', responses };
+      }
+      const responses = await this.responseService.findAllWithQuestions();
+      return { message: 'Fetched all responses', responses };
+    } catch (error) {
+      return { message: error.message };
+    }
+  }
+
+  @Get('question/:questionId')
+  @ApiOperation({ summary: 'Fetch responses by questionId' })
+  @ApiOkResponse({ description: 'Responses found' })
+  @ApiNotFoundResponse({ description: 'No responses found for the question' })
+  async findByQuestionId(@Param('questionId') questionId: string) {
+    try {
+      const responses = await this.responseService.findByQuestionId(questionId);
+      if (responses.length === 0) {
+        return { message: 'No responses found for this question' };
+      }
+      return { message: 'Fetched responses for question', responses };
+    } catch (error) {
+      return { message: error.message };
+    }
+  }
 
   @Post('create')
   @ApiOperation({ summary: 'Creates a new response' })
@@ -49,7 +268,6 @@ export class ResponseController {
   async create(@Body() createResponseDto: CreateResponseDto) {
     const { questionId } = createResponseDto;
 
-    // Validate questionId format
     if (!Types.ObjectId.isValid(questionId)) {
       throw new BadRequestException('Invalid questionId format');
     }
@@ -79,131 +297,6 @@ export class ResponseController {
   @Get('ping')
   ping() {
     return 'pong';
-  }
-
-  @Post('submit')
-  @ApiOperation({
-    summary: 'Submit multiple responses (userId, questionId, isCorrect)',
-  })
-  @ApiCreatedResponse({ description: 'Responses submitted successfully' })
-  @ApiBadRequestResponse({ description: 'Invalid data provided' })
-  @ApiNotFoundResponse({ description: 'User or Question not found' })
-  async submitResponses(@Body() responses: SubmitAnswerDto[]) {
-    const results: Response[] = [];
-    let totalScore = 0;
-
-    for (const responseData of responses) {
-      const { userId, questionId, isCorrect, selectedAnswerText } =
-        responseData;
-
-      if (
-        !userId ||
-        !questionId ||
-        typeof isCorrect !== 'boolean' ||
-        !selectedAnswerText
-      ) {
-        console.log('Invalid response data:', responseData);
-        continue;
-      }
-
-      try {
-        // Log the user and question being fetched
-        console.log('Fetching user with ID:', userId);
-        const user = await this.userService.findById(userId);
-        if (!user) {
-          console.log('User not found for ID:', userId);
-          throw new NotFoundException(`User ${userId} not found`);
-        }
-
-        console.log('Fetching question with ID:', questionId);
-        const question = await this.questionService.findById(questionId);
-        if (!question) {
-          console.log('Question not found for ID:', questionId);
-          throw new NotFoundException(`Question ${questionId} not found`);
-        }
-
-        const existingResponse =
-          await this.responseService.findByUserAndQuestion(userId, questionId);
-        console.log('Checking for existing response...');
-        if (existingResponse) {
-          console.log(
-            'Response already exists for user:',
-            userId,
-            'and question:',
-            questionId,
-          );
-          continue;
-        }
-
-        // Create a new response
-        // Assuming Response schema's text is now a string
-        const newResponse = await this.responseService.create({
-          userId: new Types.ObjectId(userId), // Make sure it's an ObjectId
-          questionId: new Types.ObjectId(questionId),
-          isCorrect,
-          text: selectedAnswerText,
-        });
-
-        console.log('New Response Saved:', newResponse); // Log to verify
-
-        results.push(newResponse);
-
-        // Convert ObjectId to string before pushing it to results
-        const newResponseFormatted = {
-          ...newResponse,
-          text: newResponse.text.toString(), // Convert ObjectId to string
-        };
-
-        results.push(newResponseFormatted);
-
-        if (isCorrect) {
-          totalScore += 1;
-        }
-      } catch (error) {
-        console.error('Error creating response:', error.message);
-        results.push({
-          userId: new Types.ObjectId(userId),
-          questionId: new Types.ObjectId(questionId),
-          isCorrect,
-          text: `Error: ${error.message}`,
-        });
-      }
-    }
-
-    console.log('Final Score:', totalScore);
-    return {
-      message: 'Responses submitted successfully',
-      responses: results,
-      score: totalScore,
-    };
-  }
-
-  @Get()
-  @ApiOperation({ summary: 'Fetch a list of responses' })
-  @ApiOkResponse({ description: 'List of responses fetched successfully' })
-  async findAll() {
-    try {
-      const responses = await this.responseService.findAllWithQuestions();
-      return { message: 'Fetched all responses', responses };
-    } catch (error) {
-      return { message: error.message };
-    }
-  }
-
-  @Get('question/:questionId')
-  @ApiOperation({ summary: 'Fetch responses by questionId' })
-  @ApiOkResponse({ description: 'Responses found' })
-  @ApiNotFoundResponse({ description: 'No responses found for the question' })
-  async findByQuestionId(@Param('questionId') questionId: string) {
-    try {
-      const responses = await this.responseService.findByQuestionId(questionId);
-      if (responses.length === 0) {
-        return { message: 'No responses found for this question' };
-      }
-      return { message: 'Fetched responses for question', responses };
-    } catch (error) {
-      return { message: error.message };
-    }
   }
 
   @Put(':id')

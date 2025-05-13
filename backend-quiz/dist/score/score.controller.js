@@ -36,9 +36,6 @@ let ScoreController = ScoreController_1 = class ScoreController {
             throw error;
         }
     }
-    async getTopRanking() {
-        return this.scoreService.getTopRanking();
-    }
 };
 exports.ScoreController = ScoreController;
 __decorate([
@@ -48,12 +45,6 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], ScoreController.prototype, "calculateScore", null);
-__decorate([
-    (0, common_1.Get)('ranking'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", Promise)
-], ScoreController.prototype, "getTopRanking", null);
 exports.ScoreController = ScoreController = ScoreController_1 = __decorate([
     (0, common_1.Controller)('score'),
     __metadata("design:paramtypes", [score_service_1.ScoreService])

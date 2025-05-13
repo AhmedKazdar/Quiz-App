@@ -16,6 +16,8 @@ const user_schema_1 = require("../user/user.schema");
 const response_schema_1 = require("../response/response.schema");
 const question_schema_1 = require("../question/question.schema");
 const user_module_1 = require("../user/user.module");
+const response_module_1 = require("../response/response.module");
+const question_module_1 = require("../question/question.module");
 let ScoreModule = class ScoreModule {
 };
 exports.ScoreModule = ScoreModule;
@@ -29,9 +31,12 @@ exports.ScoreModule = ScoreModule = __decorate([
                 { name: question_schema_1.Question.name, schema: question_schema_1.QuestionSchema },
             ]),
             user_module_1.UserModule,
+            (0, common_1.forwardRef)(() => response_module_1.ResponseModule),
+            (0, common_1.forwardRef)(() => question_module_1.QuestionModule),
         ],
         providers: [score_service_1.ScoreService],
         controllers: [score_controller_1.ScoreController],
+        exports: [score_service_1.ScoreService],
     })
 ], ScoreModule);
 //# sourceMappingURL=score.module.js.map

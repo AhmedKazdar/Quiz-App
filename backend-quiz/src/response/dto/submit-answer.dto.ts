@@ -1,11 +1,11 @@
-import { IsString, IsBoolean, IsNotEmpty } from 'class-validator';
+import { IsString, IsBoolean, IsNotEmpty, IsMongoId } from 'class-validator';
 
 export class SubmitAnswerDto {
-  @IsString()
+  @IsMongoId()
   @IsNotEmpty()
   userId: string;
 
-  @IsString()
+  @IsMongoId()
   @IsNotEmpty()
   questionId: string;
 
@@ -14,5 +14,5 @@ export class SubmitAnswerDto {
 
   @IsString()
   @IsNotEmpty()
-  selectedAnswerText: string;
+  text: string; // Changed from selectedAnswerText to text
 }

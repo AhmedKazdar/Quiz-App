@@ -1,99 +1,66 @@
 import {
   Injectable,
-  NotFoundException,
   BadRequestException,
+  NotFoundException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { Score } from './score.schema';
+import { ResponseDocument } from '../response/response.schema';
 import { User } from '../user/user.schema';
-import { Response } from '../response/response.schema';
-import { Score, ScoreDocument } from './score.schema';
-import { Question } from '../question/question.schema';
 
 @Injectable()
 export class ScoreService {
   constructor(
-    @InjectModel(Score.name) private scoreModel: Model<ScoreDocument>,
+    @InjectModel(Score.name) private scoreModel: Model<Score>,
+    @InjectModel('Response') private responseModel: Model<ResponseDocument>,
     @InjectModel(User.name) private userModel: Model<User>,
-    @InjectModel(Response.name) private responseModel: Model<Response>,
-    @InjectModel(Question.name) private questionModel: Model<Question>,
   ) {}
 
-  async calculateScore(userId: string): Promise<Score> {
+  async syncUserScore(userId: string): Promise<Score> {
     try {
-      // Validate the userId format
       if (!Types.ObjectId.isValid(userId)) {
         throw new BadRequestException('Invalid userId format');
       }
-
       const objectId = new Types.ObjectId(userId);
 
-      // Check if user exists
       const userExists = await this.userModel.findById(objectId);
       if (!userExists) {
         throw new NotFoundException('User not found');
       }
 
-      console.log('Fetching responses for user:', objectId);
-
-      // Check if responses for this user exist before querying
-      const allResponses = await this.responseModel.find().exec();
-      console.log('All Responses in the DB:', allResponses);
-
-      // Fetch responses for the user and ensure question is populated
-      const responses = await this.responseModel
+      console.log('Syncing score for user:', objectId.toString());
+      const responses = (await this.responseModel
         .find({ userId: objectId })
-        .exec();
+        .sort({ createdAt: -1 }) // Latest response first
+        .exec()) as ResponseDocument[];
+      console.log('Fetched Responses:', responses.length);
 
-      console.log('Fetched Responses:', responses); // Log fetched responses
-
-      if (responses.length === 0) {
-        console.log('No responses found for user:', objectId);
-        return { score: 0 } as Score; // Return 0 if no responses found
-      }
-
-      let score = 0;
-
-      // Loop through each response and check if it is correct
+      // Deduplicate by questionId, keeping the latest response
+      const uniqueResponses: ResponseDocument[] = [];
+      const seenQuestionIds = new Set<string>();
       for (const response of responses) {
-        console.log('Received responseData:', response);
-
-        const isCorrectStr = String(response.isCorrect).toLowerCase();
-
-        if (isCorrectStr !== 'true' && isCorrectStr !== 'false') {
-          console.warn(
-            'Invalid isCorrect value (not a valid boolean string or boolean), skipping:',
-            response,
-          );
-          continue;
-        }
-
-        const isCorrect = isCorrectStr === 'true';
-
-        if (isCorrect) {
-          score += 1;
+        if (!seenQuestionIds.has(response.questionId.toString())) {
+          uniqueResponses.push(response);
+          seenQuestionIds.add(response.questionId.toString());
         }
       }
+      console.log('Unique Responses:', uniqueResponses.length);
 
-      console.log('Calculated Score:', score);
+      const correctAnswers = uniqueResponses.filter((r) => r.isCorrect).length;
+      console.log('Correct Responses Count:', correctAnswers);
 
-      // Now update or create the user's score in the Score model
-      const existingScore = await this.scoreModel.findOneAndUpdate(
+      const updatedScore = await this.scoreModel.findOneAndUpdate(
         { userId: objectId },
-        { score, createdAt: new Date() },
-        { new: true, upsert: true },
+        { score: correctAnswers, createdAt: new Date() },
+        { upsert: true, new: true },
       );
 
-      console.log('Existing Score After Update:', existingScore);
-
-      // Populate the score with user details
       const populatedScore = await this.scoreModel
-        .findById(existingScore._id)
+        .findById(updatedScore._id)
         .populate('userId', 'username')
         .exec();
-
-      console.log('Populated Score:', populatedScore);
 
       if (!populatedScore || !populatedScore.userId) {
         throw new InternalServerErrorException(
@@ -101,6 +68,65 @@ export class ScoreService {
         );
       }
 
+      console.log('Synced Score:', populatedScore.score);
+      return populatedScore;
+    } catch (error) {
+      console.error('Error syncing score:', error.message, error.stack);
+      throw new InternalServerErrorException('Failed to sync score');
+    }
+  }
+
+  async calculateScore(userId: string): Promise<Score> {
+    try {
+      if (!Types.ObjectId.isValid(userId)) {
+        throw new BadRequestException('Invalid userId format');
+      }
+      const objectId = new Types.ObjectId(userId);
+
+      const userExists = await this.userModel.findById(objectId);
+      if (!userExists) {
+        throw new NotFoundException('User not found');
+      }
+
+      console.log('Fetching responses for user:', objectId.toString());
+      const responses = (await this.responseModel
+        .find({ userId: objectId })
+        .sort({ createdAt: -1 })
+        .exec()) as ResponseDocument[];
+      console.log('Fetched Responses:', responses.length);
+
+      // Deduplicate by questionId
+      const uniqueResponses: ResponseDocument[] = [];
+      const seenQuestionIds = new Set<string>();
+      for (const response of responses) {
+        if (!seenQuestionIds.has(response.questionId.toString())) {
+          uniqueResponses.push(response);
+          seenQuestionIds.add(response.questionId.toString());
+        }
+      }
+      console.log('Unique Responses:', uniqueResponses.length);
+
+      const correctAnswers = uniqueResponses.filter((r) => r.isCorrect).length;
+      console.log('Correct Responses Count:', correctAnswers);
+
+      const updatedScore = await this.scoreModel.findOneAndUpdate(
+        { userId: objectId },
+        { score: correctAnswers, createdAt: new Date() },
+        { upsert: true, new: true },
+      );
+
+      const populatedScore = await this.scoreModel
+        .findById(updatedScore._id)
+        .populate('userId', 'username')
+        .exec();
+
+      if (!populatedScore || !populatedScore.userId) {
+        throw new InternalServerErrorException(
+          'User details could not be populated for the score.',
+        );
+      }
+
+      console.log('Calculated Score:', populatedScore.score);
       return populatedScore;
     } catch (error) {
       console.error(
@@ -114,27 +140,19 @@ export class ScoreService {
     }
   }
 
-  // score.service.ts
-  async syncUserScore(userId: string): Promise<Score> {
-    const correctAnswers = await this.responseModel.countDocuments({
-      userId: new Types.ObjectId(userId),
-      isCorrect: true,
-    });
-
-    return this.scoreModel.findOneAndUpdate(
-      { userId: new Types.ObjectId(userId) },
-      { score: correctAnswers, createdAt: new Date() },
-      { upsert: true, new: true },
-    );
-  }
-
-  // Method to get top rankings
-  async getTopRanking(): Promise<Score[]> {
-    return await this.scoreModel
-      .find()
-      .sort({ score: -1 })
-      .limit(5)
-      .populate('userId', 'username') // Populate username for ranking
-      .exec();
+  async getTopRanking(limit: number = 5): Promise<Score[]> {
+    try {
+      const topScores = await this.scoreModel
+        .find()
+        .sort({ score: -1, createdAt: -1 })
+        .limit(limit)
+        .populate('userId', 'username')
+        .exec();
+      console.log('Fetched top rankings:', topScores);
+      return topScores;
+    } catch (error) {
+      console.error('Error fetching top rankings:', error.message, error.stack);
+      throw new InternalServerErrorException('Failed to fetch top rankings');
+    }
   }
 }

@@ -21,7 +21,7 @@ export declare class QuestionController {
     }>;
     findOne(id: string): Promise<{
         question: import("./question.schema").Question;
-        responses: import("../response/response.schema").Response[];
+        responses: import("../response/response.service").ResponseDocument[];
         message?: undefined;
     } | {
         message: any;

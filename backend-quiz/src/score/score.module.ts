@@ -1,5 +1,5 @@
 // src/score/score.module.ts
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ScoreService } from './score.service';
 import { ScoreController } from './score.controller';
@@ -8,6 +8,8 @@ import { User, UserSchema } from '../user/user.schema';
 import { Response, ResponseSchema } from '../response/response.schema';
 import { Question, QuestionSchema } from '../question/question.schema';
 import { UserModule } from 'src/user/user.module';
+import { ResponseModule } from 'src/response/response.module';
+import { QuestionModule } from 'src/question/question.module';
 
 @Module({
   imports: [
@@ -18,8 +20,11 @@ import { UserModule } from 'src/user/user.module';
       { name: Question.name, schema: QuestionSchema },
     ]),
     UserModule,
+    forwardRef(() => ResponseModule), // Handle circular dependency
+    forwardRef(() => QuestionModule), // If QuestionModule is needed
   ],
   providers: [ScoreService],
   controllers: [ScoreController],
+  exports: [ScoreService],
 })
 export class ScoreModule {}

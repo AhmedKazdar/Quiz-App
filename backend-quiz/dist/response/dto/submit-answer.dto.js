@@ -15,16 +15,16 @@ class SubmitAnswerDto {
     userId;
     questionId;
     isCorrect;
-    selectedAnswerText;
+    text;
 }
 exports.SubmitAnswerDto = SubmitAnswerDto;
 __decorate([
-    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsMongoId)(),
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
 ], SubmitAnswerDto.prototype, "userId", void 0);
 __decorate([
-    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsMongoId)(),
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
 ], SubmitAnswerDto.prototype, "questionId", void 0);
@@ -36,5 +36,5 @@ __decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
-], SubmitAnswerDto.prototype, "selectedAnswerText", void 0);
+], SubmitAnswerDto.prototype, "text", void 0);
 //# sourceMappingURL=submit-answer.dto.js.map
